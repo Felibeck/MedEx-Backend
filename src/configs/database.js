@@ -1,26 +1,26 @@
-// Configuración de Base de Datos
-// Este archivo contiene la configuración para conectarse a la base de datos
+import { createClient } from '@supabase/supabase-js';
 
-const DATABASE_CONFIG = {
+// 1. Configuramos las credenciales usando la Service Key para el backend
+const SUPABASE_CONFIG = {
   development: {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'medex_dev',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password'
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_SERVICE_KEY, // Clave administradora para desarrollo
   },
   production: {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    url: process.env.SUPABASE_URL,
+    key: process.env.SUPABASE_SERVICE_KEY, // Clave administradora para producción
   }
 };
 
-export const getConfig = () => {
-  const env = process.env.NODE_ENV || 'development';
-  return DATABASE_CONFIG[env];
-};
+const env = process.env.NODE_ENV || 'development';
+const config = SUPABASE_CONFIG[env];
 
-export default DATABASE_CONFIG;
+// 2. Control de errores por si te olvidás de configurar el .env
+if (!config.url || !config.key) {
+  throw new Error(`[Error de Configuración]: Falta configurar SUPABASE_URL o SUPABASE_SERVICE_KEY en el archivo .env para el entorno: ${env}`);
+}
+
+// 3. Creamos una única instancia de conexión para todo el proyecto
+export const supabase = createClient(config.url, config.key);
+
+export default supabase;
