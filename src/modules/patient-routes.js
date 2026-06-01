@@ -9,7 +9,8 @@ export const createPatientRoutes = (patientController) => {
   // Obtener estudios / imágenes del paciente
   router.get('/:id/estudios', (req, res) => patientController.getEstudios(req, res));
 
-
+  // Obtener todos los pacientes
+  router.get('/', (req, res) => patientController.getAll(req, res));
 
 
 

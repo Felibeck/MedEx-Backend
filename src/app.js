@@ -10,7 +10,6 @@ import { PatientController } from './controllers/patient-controller.js';
 import { DoctorController } from './controllers/doctor-controller.js';
 import { createPatientRoutes } from './modules/patient-routes.js';
 import { createDoctorRoutes } from './modules/doctor-routes.js';
-
 const app = express();
 
 // Middlewares

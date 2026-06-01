@@ -14,7 +14,11 @@ export class PatientService {
     return estudios;
   }
 
-
+  // Obtener todos los pacientes
+  async getAllPatients() {
+    const patients = await this.patientRepository.findAll();
+    return patients.map(p => p.getPublicData());
+  }
 
 
 
@@ -76,11 +80,7 @@ export class PatientService {
     return updatedPatient.getPublicData();
   }
 
-  // Obtener todos los pacientes
-  async getAllPatients() {
-    const patients = await this.patientRepository.findAll();
-    return patients.map(p => p.getPublicData());
-  }
+
 
   // Obtener pacientes activos
   async getActivePatients() {

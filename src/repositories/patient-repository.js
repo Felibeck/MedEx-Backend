@@ -1,6 +1,5 @@
 // Repositorio de Pacientes
 // Gestión de datos de pacientes para la conexión con Supabase.
-
 export class PatientRepository {
   constructor(database) {
     this.db = database;
@@ -20,7 +19,9 @@ export class PatientRepository {
   }
 
 
-
+  async findAll() {
+    //obtener todos los pacientes
+  }
 
 
 
@@ -39,10 +40,7 @@ export class PatientRepository {
     return null;
   }
 
-  async findAll() {
-    // TODO: implementar con Supabase
-    return [];
-  }
+
 
   async findActive() {
     // TODO: implementar con Supabase

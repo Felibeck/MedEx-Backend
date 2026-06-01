@@ -24,7 +24,22 @@ export class PatientController {
     }
   }
 
+  // Obtener todos los pacientes
+  async getAll(req, res) {
+    try {
+      const patients = await this.patientService.getAllPatients();
 
+      res.status(200).json({
+        success: true,
+        data: patients
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
 
 
@@ -104,22 +119,7 @@ export class PatientController {
     }
   }
 
-  // Obtener todos los pacientes
-  async getAll(req, res) {
-    try {
-      const patients = await this.patientService.getAllPatients();
 
-      res.status(200).json({
-        success: true,
-        data: patients
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
 
   // Obtener pacientes activos
   async getActive(req, res) {
