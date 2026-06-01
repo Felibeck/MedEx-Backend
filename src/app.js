@@ -2,8 +2,7 @@
 // Configuración central de Express y rutas
 
 import express from 'express';
-import { supabase } from './configs/supabase-client.js';
-import { PatientRepository } from './repositories/patient-repository.js';
+import supabase from './configs/database.js';import { PatientRepository } from './repositories/patient-repository.js';
 import { DoctorRepository } from './repositories/doctor-repository.js';
 import { PatientService } from './services/patient-service.js';
 import { DoctorService } from './services/doctor-service.js';
