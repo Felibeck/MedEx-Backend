@@ -7,22 +7,16 @@ export class PatientController {
   }
 
  // Obtener estudios / imágenes del paciente
-  async getEstudios(req, res) {
-    try {
-      const patientId = req.params.id;
-      const estudios = await this.patientService.getPatientEstudios(patientId);
-
-      res.status(200).json({
-        success: true,
-        data: estudios
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
-    }
+async getEstudios(req, res) {
+  try {
+    const patientId = req.params.id;
+    const estudios = await this.patientService.getPatientEstudios(patientId);
+    res.status(200).json({ success: true, data: estudios });
+  } catch (error) {
+    console.error('Error completo en controller:', error); // ← agregá esto
+    res.status(500).json({ success: false, message: error.message });
   }
+}
 
   // Obtener todos los pacientes
   async getAll(req, res) {
