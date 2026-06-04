@@ -34,10 +34,11 @@ export class DoctorController {
   // Crear nueva consulta desde profesional sobre un paciente buscado por DNI
   async crearConsulta(req, res) {
     try {
+      const body = req.body || {};
       const {
         dni,
-        profesional_id = null,
-        organizacion_id = null,
+        profesional_id,
+        organizacion_id,
         fecha,
         ant = null,
         ago = null,
@@ -46,9 +47,18 @@ export class DoctorController {
         eco = null,
         ef = null,
         otros = null
-      } = req.body;
+      } = body;
+
+      if (!Object.keys(body).length) {
+        return res.status(400).json({
+          success: false,
+          message: 'El body de la petición es requerido y debe ser JSON con los campos necesarios'
+        });
+      }
 
       if (!dni) return res.status(400).json({ success: false, message: 'Se requiere dni del paciente' });
+      if (!profesional_id) return res.status(400).json({ success: false, message: 'Se requiere profesional_id del médico' });
+      if (!organizacion_id) return res.status(400).json({ success: false, message: 'Se requiere organizacion_id' });
 
       const supabase = (await import('../configs/database.js')).default;
 
@@ -85,8 +95,13 @@ export class DoctorController {
       const created = await this.doctorService.createConsulta(insertPayload);
       return res.status(201).json({ success: true, data: created });
     } catch (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: 'Error interno al crear consulta' });
+      console.error('crearConsulta error:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno al crear consulta',
+        error: err?.message || String(err),
+        details: err?.details || undefined
+      });
     }
   }
 
