@@ -6,6 +6,92 @@ export class DoctorController {
     this.doctorService = doctorService;
   }
 
+
+  async buscarPacientePorDni(req, res) {
+    try {
+      const dni = req.query.dni;
+      if (!dni) return res.status(400).json({ success: false, message: 'Falta parámetro dni' });
+
+      // Usar servicio/repo si está disponible, pero consultar directamente a DB aquí
+      const supabase = (await import('../configs/database.js')).default;
+
+      const { data, error } = await supabase
+        .from('perfil_paciente')
+        .select('id, dni, edad, identidad_genero, telefono, usuario (nombre, apellido, email)')
+        .eq('dni', dni)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+
+      return res.status(200).json({ success: true, data });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Error interno' });
+    }
+  }
+
+  // Crear nueva consulta desde profesional sobre un paciente buscado por DNI
+  async crearConsulta(req, res) {
+    try {
+      const {
+        dni,
+        profesional_id = null,
+        organizacion_id = null,
+        fecha,
+        ant = null,
+        ago = null,
+        ahf = null,
+        mx = null,
+        eco = null,
+        ef = null,
+        otros = null
+      } = req.body;
+
+      if (!dni) return res.status(400).json({ success: false, message: 'Se requiere dni del paciente' });
+
+      const supabase = (await import('../configs/database.js')).default;
+
+      const { data: paciente, error: pacienteError } = await supabase
+        .from('perfil_paciente')
+        .select('id')
+        .eq('dni', dni)
+        .maybeSingle();
+
+      if (pacienteError) throw pacienteError;
+      if (!paciente) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
+
+      const pacienteId = paciente.id;
+
+      const now = new Date();
+      const fechaObj = fecha ? new Date(fecha) : now;
+      if (isNaN(fechaObj.getTime())) return res.status(400).json({ success: false, message: 'Fecha inválida' });
+      if (fechaObj > now) return res.status(400).json({ success: false, message: 'La fecha no puede ser futura' });
+
+      const insertPayload = {
+        profesional_id,
+        organizacion_id,
+        paciente_id: pacienteId,
+        fecha: fechaObj.toISOString(),
+        ant,
+        ago,
+        ahf,
+        mx,
+        eco,
+        ef,
+        otros
+      };
+
+      const created = await this.doctorService.createConsulta(insertPayload);
+      return res.status(201).json({ success: true, data: created });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ success: false, message: 'Error interno al crear consulta' });
+    }
+  }
+
+
+
   // Registrar nuevo doctor
   async register(req, res) {
     try {
@@ -269,4 +355,6 @@ export class DoctorController {
       });
     }
   }
+
+  // Buscar paciente por DNI (para uso por profesionales)
 }

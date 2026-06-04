@@ -8,6 +8,18 @@ export class DoctorService {
     this.doctorRepository = doctorRepository;
   }
 
+   async createConsulta(consultaData) {
+    const createdConsulta = await this.doctorRepository.crearConsulta(consultaData);
+    return createdConsulta;
+  }
+
+
+
+
+
+
+
+  
   // Registrar nuevo doctor
   async registerDoctor(doctorData) {
     // Validar datos
@@ -159,4 +171,6 @@ export class DoctorService {
       availableSlots: doctor.availableSlots
     };
   }
+
+ 
 }

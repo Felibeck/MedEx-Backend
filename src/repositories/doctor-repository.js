@@ -26,6 +26,34 @@ export class DoctorRepository {
     return null;
   }
 
+  async getPacienteByDni(dni) {
+    const { data, error } = await this.db
+      .from('perfil_paciente')
+      .select('id, dni, edad, identidad_genero, telefono, usuario (nombre, apellido, email)')
+      .eq('dni', dni)
+      .is('usuario.deleted_at', null)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      paciente_id: data.id,
+      dni: data.dni,
+      edad: data.edad,
+      identidad_genero: data.identidad_genero,
+      telefono: data.telefono,
+      nombre: data.usuario?.nombre || null,
+      apellido: data.usuario?.apellido || null,
+      email: data.usuario?.email || null
+    };
+  }
+
   async findAll() {
     // TODO: implementar con Supabase
     return [];
@@ -69,6 +97,20 @@ export class DoctorRepository {
   async addQualification(doctorId, qualification) {
     // TODO: implementar con Supabase
     return null;
+  }
+
+  async crearConsulta(consultaData) {
+    const { data, error } = await this.db
+      .from('consulta')
+      .insert(consultaData)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 
   async findBySpecialtyAndCity(specialty, city) {

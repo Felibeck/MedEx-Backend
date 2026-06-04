@@ -5,6 +5,15 @@ import express from 'express';
 
 export const createDoctorRoutes = (doctorController) => {
   const router = express.Router();
+  
+  router.get('/pacientes/buscar', (req, res) => doctorController.buscarPacientePorDni(req, res));
+
+  // Registrar nueva consulta
+  router.post('/consultas', (req, res) => doctorController.crearConsulta(req, res));
+
+
+
+
 
   // Registro de nuevo doctor
   router.post('/register', (req, res) => doctorController.register(req, res));
@@ -24,6 +33,9 @@ export const createDoctorRoutes = (doctorController) => {
   // Buscar doctores por especialidad y ciudad
   router.get('/search/specialty-city', (req, res) => doctorController.searchBySpecialtyAndCity(req, res));
 
+  // --- Endpoints del flujo clínico ---
+  // Buscar paciente por DNI
+ 
   // Obtener perfil de doctor
   router.get('/:id', (req, res) => doctorController.getProfile(req, res));
 
