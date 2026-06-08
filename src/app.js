@@ -1,8 +1,9 @@
 // Aplicación Principal - MedEx Backend
 // Configuración central de Express y rutas
-
+import 'dotenv/config';
 import express from 'express';
-import supabase from './configs/database.js';import { PatientRepository } from './repositories/patient-repository.js';
+import supabase from './configs/database.js';
+import { PatientRepository } from './repositories/patient-repository.js';
 import { DoctorRepository } from './repositories/doctor-repository.js';
 import { PatientService } from './services/patient-service.js';
 import { DoctorService } from './services/doctor-service.js';
@@ -10,7 +11,6 @@ import { PatientController } from './controllers/patient-controller.js';
 import { DoctorController } from './controllers/doctor-controller.js';
 import { createPatientRoutes } from './modules/patient-routes.js';
 import { createDoctorRoutes } from './modules/doctor-routes.js';
-
 const app = express();
 
 // Middlewares

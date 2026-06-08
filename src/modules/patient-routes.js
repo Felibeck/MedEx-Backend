@@ -9,7 +9,8 @@ export const createPatientRoutes = (patientController) => {
   // Obtener estudios / imágenes del paciente
   router.get('/:id/estudios', (req, res) => patientController.getEstudios(req, res));
 
-
+  // Obtener todos los pacientes
+  router.get('/', (req, res) => patientController.getAll(req, res));
 
 
 
@@ -17,9 +18,6 @@ export const createPatientRoutes = (patientController) => {
 
   // Registro de nuevo paciente
   router.post('/register', (req, res) => patientController.register(req, res));
-
-  // Obtener todos los pacientes
-  router.get('/', (req, res) => patientController.getAll(req, res));
 
   // Obtener pacientes activos
   router.get('/active', (req, res) => patientController.getActive(req, res));
