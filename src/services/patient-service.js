@@ -8,10 +8,19 @@ export class PatientService {
     this.patientRepository = patientRepository;
   }
 
-  // Obtener estudios / imágenes del paciente
+  // Obtener estudios del paciente (listado)
   async getPatientEstudios(patientId) {
     const estudios = await this.patientRepository.getEstudios(patientId);
     return estudios;
+  }
+
+  // Obtener detalle de un estudio específico del paciente
+  async getPatientEstudioById(estudioId, patientId) {
+    const estudio = await this.patientRepository.getEstudioById(estudioId, patientId);
+    if (!estudio) {
+      throw new Error('Estudio no encontrado');
+    }
+    return estudio;
   }
 
   // Obtener todos los pacientes

@@ -6,21 +6,86 @@ export class PatientRepository {
   }
 
   async getEstudios(patientId) {
-  console.log('Supabase URL:', process.env.SUPABASE_URL);
-  console.log('Buscando estudios para:', patientId);
-  
-  const { data, error } = await this.db
-    .from('estudio')
-    .select('id, tipo, nombre_archivo, url_archivo, descripcion, subido_at')
-    .eq('paciente_id', patientId);
+    const { data, error } = await this.db
+      .from('estudio')
+      .select(`
+        id,
+        tipo,
+        tipo_estudio,
+        categoria,
+        fecha,
+        institucion,
+        fotos,
+        informe,
+        paciente_dob,
+        metadata_dicom,
+        nombre_archivo,
+        url_archivo,
+        descripcion,
+        subido_at,
+        medico:medico_id (
+          id,
+          matricula,
+          especialidad_medica,
+          profile_picture,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        )
+      `)
+      .eq('paciente_id', patientId)
+      .order('fecha', { ascending: false });
 
-  if (error) {
-    console.error('Error completo:', JSON.stringify(error, null, 2));  // ← agregá esto
-    throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    if (error) {
+      console.error('Error completo:', JSON.stringify(error, null, 2));
+      throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    }
+
+    return data || [];
   }
 
-  return data || [];
-}
+  async getEstudioById(estudioId, patientId) {
+    const { data, error } = await this.db
+      .from('estudio')
+      .select(`
+        id,
+        tipo,
+        tipo_estudio,
+        categoria,
+        fecha,
+        institucion,
+        fotos,
+        informe,
+        paciente_dob,
+        metadata_dicom,
+        nombre_archivo,
+        url_archivo,
+        descripcion,
+        subido_at,
+        medico:medico_id (
+          id,
+          matricula,
+          especialidad_medica,
+          profile_picture,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        )
+      `)
+      .eq('id', estudioId)
+      .eq('paciente_id', patientId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al obtener el estudio: ${error.message}`);
+    }
+
+    return data;
+  }
 
 
   async findAll() {
