@@ -8,33 +8,7 @@ export class PatientRepository {
   async getEstudios(patientId) {
     const { data, error } = await this.db
       .from('estudio')
-      .select(`
-        id,
-        tipo,
-        tipo_estudio,
-        categoria,
-        fecha,
-        institucion,
-        fotos,
-        informe,
-        paciente_dob,
-        metadata_dicom,
-        nombre_archivo,
-        url_archivo,
-        descripcion,
-        subido_at,
-        medico:medico_id (
-          id,
-          matricula,
-          especialidad_medica,
-          profile_picture,
-          usuario:usuario_id (
-            nombre,
-            apellido,
-            email
-          )
-        )
-      `)
+      .select('id, tipo, tipo_estudio, categoria, fecha, institucion')
       .eq('paciente_id', patientId)
       .order('fecha', { ascending: false });
 
