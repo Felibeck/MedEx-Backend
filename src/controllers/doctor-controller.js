@@ -37,7 +37,14 @@ export class DoctorController {
   // Crear nueva consulta desde profesional sobre un paciente buscado por DNI
   async crearConsulta(req, res) {
     try {
-      const body = req.body || {};
+      let body = req.body || {};
+
+      // Si el cliente envía los datos por query params en lugar de body (p.ej.
+      // POST /consultas?dni=...), aceptar también esa forma para compatibilidad
+      // con la UI que usa query params.
+      if (!Object.keys(body).length && Object.keys(req.query || {}).length) {
+        body = { ...req.query };
+      }
 
       if (!Object.keys(body).length) {
         return res.status(400).json({
@@ -55,8 +62,6 @@ export class DoctorController {
     } catch (error) {
       const clientErrors = new Set([
         'Se requiere dni del paciente',
-        'Se requiere profesional_id del médico',
-        'Se requiere organizacion_id',
         'El DNI es requerido',
         'Fecha inválida',
         'La fecha no puede ser futura'
