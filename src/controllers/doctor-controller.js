@@ -46,12 +46,6 @@ export class DoctorController {
         body = { ...req.query };
       }
 
-      if (!Object.keys(body).length) {
-        return res.status(400).json({
-          success: false,
-          message: 'El body de la petición es requerido y debe ser JSON con los campos necesarios'
-        });
-      }
 
       const created = await this.doctorService.createConsulta(body);
 
