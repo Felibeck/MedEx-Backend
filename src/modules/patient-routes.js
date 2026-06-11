@@ -6,8 +6,11 @@ import express from 'express';
 export const createPatientRoutes = (patientController) => {
   const router = express.Router();
 
-  // Obtener estudios / imágenes del paciente
+  // Obtener estudios del paciente (listado)
   router.get('/:id/estudios', (req, res) => patientController.getEstudios(req, res));
+
+  // Obtener detalle de un estudio específico
+  router.get('/:id/estudios/:estudioId', (req, res) => patientController.getEstudioById(req, res));
 
   // Obtener todos los pacientes
   router.get('/', (req, res) => patientController.getAll(req, res));

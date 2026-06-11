@@ -16,7 +16,7 @@ export class Patient extends Usuario {
     // perfilId,
     usuario_id,
     dni,
-    // edad,
+    fecha_nacimiento,
     identidad_genero,
     telefono,
     perfil_created_at
@@ -25,7 +25,7 @@ export class Patient extends Usuario {
     this.perfilId = perfilId;
     this.usuario_id = usuario_id;
     this.dni = dni;
-    // this.edad = edad;
+    this.fecha_nacimiento = fecha_nacimiento;
     this.identidad_genero = identidad_genero;
     this.telefono = telefono;
     this.perfil_created_at = perfil_created_at;
