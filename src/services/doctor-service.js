@@ -74,13 +74,18 @@ export class DoctorService {
     // Intentar búsqueda con DNI normalizado (solo dígitos). Si no se encuentra,
     // intentar con el valor crudo (por si en la BD se guardó con puntos/u otros).
     let paciente = await this.doctorRepository.getPacienteByDni(dniNormalizado);
+    console.log('buscarPacientePorDni: resultado primera búsqueda ->', paciente);
     if (!paciente && raw !== dniNormalizado) {
       paciente = await this.doctorRepository.getPacienteByDni(raw);
+      console.log('buscarPacientePorDni: resultado búsqueda con raw ->', paciente);
     }
 
     if (!paciente) {
+      console.log('buscarPacientePorDni: paciente no encontrado para', { dniNormalizado, raw });
       throw new Error('Paciente no encontrado');
     }
+
+    console.log('buscarPacientePorDni: paciente encontrado ->', { paciente_id: paciente.paciente_id, dni: paciente.dni });
 
     return paciente;
   }

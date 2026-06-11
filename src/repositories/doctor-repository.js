@@ -9,7 +9,7 @@ export class DoctorRepository {
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
       .from('perfil_paciente')
-      .select('id, dni, edad, identidad_genero, telefono, usuario (nombre, apellido, email)')
+      .select('id, dni, identidad_genero, telefono, usuario (nombre, apellido, email)')
       .eq('dni', dni)
       .is('usuario.deleted_at', null)
       .maybeSingle();
@@ -25,7 +25,6 @@ export class DoctorRepository {
     return {
       paciente_id: data.id,
       dni: data.dni,
-      edad: data.edad,
       identidad_genero: data.identidad_genero,
       telefono: data.telefono,
       nombre: data.usuario?.nombre || null,
