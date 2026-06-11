@@ -13,7 +13,7 @@ export class Patient extends Usuario {
     es_medico,
     created_at,
     deleted_at,
-    perfilId,
+    // perfilId,
     usuario_id,
     dni,
     fecha_nacimiento,

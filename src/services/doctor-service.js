@@ -27,13 +27,9 @@ export class DoctorService {
       throw new Error('Se requiere dni del paciente');
     }
 
-    if (!profesional_id) {
-      throw new Error('Se requiere profesional_id del médico');
-    }
-
-    if (!organizacion_id) {
-      throw new Error('Se requiere organizacion_id');
-    }
+    // `profesional_id` y `organizacion_id` pueden ser opcionales desde el frontend
+    // (por ejemplo al guardar borrador desde la vista de consulta). Si no se
+    // proporcionan, se guardan como `null` en la base de datos.
 
     const paciente = await this.buscarPacientePorDni(dni);
 
@@ -66,17 +62,30 @@ export class DoctorService {
   }
 
   async buscarPacientePorDni(dni) {
-    const dniNormalizado = String(dni).trim();
+    const raw = String(dni || '').trim();
+    const dniNormalizado = raw.replace(/\D/g, ''); // conservar solo dígitos
 
     if (!dniNormalizado) {
       throw new Error('El DNI es requerido');
     }
 
-    const paciente = await this.doctorRepository.getPacienteByDni(dniNormalizado);
+    console.log('buscarPacientePorDni: buscando DNI ->', dniNormalizado);
+
+    // Intentar búsqueda con DNI normalizado (solo dígitos). Si no se encuentra,
+    // intentar con el valor crudo (por si en la BD se guardó con puntos/u otros).
+    let paciente = await this.doctorRepository.getPacienteByDni(dniNormalizado);
+    console.log('buscarPacientePorDni: resultado primera búsqueda ->', paciente);
+    if (!paciente && raw !== dniNormalizado) {
+      paciente = await this.doctorRepository.getPacienteByDni(raw);
+      console.log('buscarPacientePorDni: resultado búsqueda con raw ->', paciente);
+    }
 
     if (!paciente) {
+      console.log('buscarPacientePorDni: paciente no encontrado para', { dniNormalizado, raw });
       throw new Error('Paciente no encontrado');
     }
+
+    console.log('buscarPacientePorDni: paciente encontrado ->', { paciente_id: paciente.paciente_id, dni: paciente.dni });
 
     return paciente;
   }
