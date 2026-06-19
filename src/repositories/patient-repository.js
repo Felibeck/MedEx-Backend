@@ -62,17 +62,16 @@ export class PatientRepository {
     }
     
     
-    async login(email, password)
+    async loginPatient(email, password)
     {
-      const { data, error } = await this.db
-        .from('usuarios')
-        .select('id, email, password_hash, es_medico, nombre, apellido')
-        .eq('email', email)
-        .eq('password_hash', password)
-        .single();
+        const { data, error } = await this.db
+          .from('usuarios')
+          .select('id, email, password_hash, es_medico, nombre, apellido')
+          .eq('email', email)
+          .single();
 
       if (error) {
-        throw new Error(`Error al iniciar sesión: ${error.message}`);
+          throw new Error(`Error al iniciar sesión: ${error.message}`);
       }
 
       return data;

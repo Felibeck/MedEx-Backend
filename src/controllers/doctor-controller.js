@@ -79,8 +79,26 @@ export class DoctorController {
           details: error?.details || undefined
         })
       });
-    }
+    } 
   }
+
+async loginDoctor(req, res) {
+  try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+    }
+
+    const result = await this.doctorService.loginDoctor(email, password);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    const status = error.message && error.message.toLowerCase().includes('credenciales') ? 401 : 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+}
+
+
 
 }
 

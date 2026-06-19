@@ -2,6 +2,8 @@
 // Contiene la lógica de negocio para doctores
 
 import { validateDoctorData, validateDoctorUpdate } from '../helpers/validations-helper.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export class DoctorService {
   constructor(doctorRepository) {
@@ -81,6 +83,42 @@ export class DoctorService {
 
     return paciente;
   }
+
+
+async loginDoctor(email, password, esMedico){
+
+    if (!email || !password) {
+      throw new Error('Email y contraseña son requeridos');
+    }
+
+    const user = await this.doctorRepository.loginDoctor(email);
+    if (!user) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash || '');
+    if (!match) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET no configurado en el entorno');
+    }
+
+    const token = jwt.sign({ id: user.id, es_medico: user.es_medico }, jwtSecret, { expiresIn: process.env.JWT_EXPIRATION || '1h' });
+
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      es_medico: user.es_medico
+    };
+
+    return { user: publicUser, token };
+
+}
 
 }
 
