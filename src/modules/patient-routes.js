@@ -22,6 +22,9 @@ export const createPatientRoutes = (patientController) => {
   // Registro de nuevo paciente
   router.post('/register', (req, res) => patientController.register(req, res));
 
+  // Login paciente
+  router.post('/login', (req, res) => patientController.loginPatient(req, res));
+
   // Obtener pacientes activos
   router.get('/active', (req, res) => patientController.getActive(req, res));
 

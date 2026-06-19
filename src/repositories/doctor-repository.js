@@ -8,7 +8,7 @@ export class DoctorRepository {
 
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
-      .from('perfiles_paciente')
+      .from('perfileses_paciente')
       .select('id, dni, fecha_nacimiento, identidad_genero, telefono, usuarios (nombre, apellido, email)')
       .eq('dni', dni)
       .is('usuarios.deleted_at', null)
@@ -72,7 +72,110 @@ export class DoctorRepository {
 
     return { ...created, notas: insertedNotas };
   }
+
+
+
+
+async loginDoctor(email, password)
+    {
+      const { data, error } = await this.db
+        .from('usuarios')
+        .select('id, email, password_hash, es_medico, nombre, apellido')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Error al iniciar sesión: ${error.message}`);
+      }
+
+      return data || null;
+    }
+
+  async findByEmail(email) {
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando usuario por email: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async create(doctorData) {
+    const {
+      email,
+      password_hash,
+      nombre,
+      apellido,
+      matricula,
+      especialidad_medica,
+      organizacion_id = null
+    } = doctorData;
+
+    const { data: userData, error: userError } = await this.db
+      .from('usuarios')
+      .insert({
+        email,
+        password_hash,
+        nombre,
+        apellido,
+        es_medico: true
+      })
+      .select('id, email, nombre, apellido, es_medico, created_at')
+      .single();
+
+    if (userError) {
+      throw new Error(`Error al crear usuario doctor: ${userError.message}`);
+    }
+
+    const { data: perfilData, error: perfilError } = await this.db
+      .from('perfil_doctor')
+      .insert({
+        usuario_id: userData.id,
+        organizacion_id,
+        matricula,
+        especialidad_medica
+      })
+      .select('id, usuario_id, organizacion_id, matricula, especialidad_medica, created_at')
+      .single();
+
+    if (perfilError) {
+      throw new Error(`Error al crear perfil de doctor: ${perfilError.message}`);
+    }
+
+    return {
+      id: userData.id,
+      email: userData.email,
+      nombre: userData.nombre,
+      apellido: userData.apellido,
+      es_medico: userData.es_medico,
+      created_at: userData.created_at,
+      perfil: perfilData,
+      password_hash: password_hash,
+      getPublicData() {
+        const { password_hash, ...rest } = this;
+        return rest;
+      }
+    };
+  }
+
+
+
+
+
+
+
+
+
+
+
+
 }
+
 
   
 //   async create(doctorData) {

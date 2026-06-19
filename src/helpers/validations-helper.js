@@ -45,8 +45,10 @@ export const validatePatientData = (patientData) => {
     errors.push('La fecha de nacimiento es requerida');
   }
 
-  if (!['M', 'F', 'O'].includes(patientData.gender)) {
-    errors.push('El género debe ser M, F u O');
+  const allowedGenders = ['femenino', 'masculino', 'no_binario', 'otro', 'prefiero_no_decir'];
+  const genderVal = (patientData.gender || '').toString().toLowerCase();
+  if (!allowedGenders.includes(genderVal)) {
+    errors.push('El género debe ser uno de: femenino, masculino, no_binario, otro, prefiero_no_decir');
   }
 
   if (!patientData.address || patientData.address.trim() === '') {
@@ -133,8 +135,12 @@ export const validatePatientUpdate = (updateData) => {
     errors.push('El número de teléfono no es válido');
   }
 
-  if (updateData.gender && !['M', 'F', 'O'].includes(updateData.gender)) {
-    errors.push('El género debe ser M, F u O');
+  if (updateData.gender) {
+    const allowedGenders = ['femenino', 'masculino', 'no_binario', 'otro', 'prefiero_no_decir'];
+    const genderVal = updateData.gender.toString().toLowerCase();
+    if (!allowedGenders.includes(genderVal)) {
+      errors.push('El género debe ser uno de: femenino, masculino, no_binario, otro, prefiero_no_decir');
+    }
   }
 
   return {

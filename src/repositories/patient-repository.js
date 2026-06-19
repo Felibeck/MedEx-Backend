@@ -59,89 +59,142 @@ export class PatientRepository {
       .eq('id', estudioId)
       .eq('paciente_id', patientId)
       .maybeSingle();
-      
-      if (error) {
-        throw new Error(`Error al obtener el estudio: ${error.message}`);
-      }
-      // normalizar tipo_estudio a un string si vino como objeto por el JOIN
-      if (data && data.tipo_estudio) {
-        const label = data.tipo_estudio.nombre ?? data.tipo_estudio.tipo ?? data.tipo_estudio.label ?? null;
-        data.tipo_estudio = label;
-      }
 
-      return data;
-    }
-    
-    
-    async login(email, password)
-    {
-      const { data, error } = await this.db
-        .from('usuarios')
-        .select('id, email, password_hash, es_medico, nombre, apellido')
-        .eq('email', email)
-        .eq('password_hash', password)
-        .single();
-
-      if (error) {
-        throw new Error(`Error al iniciar sesión: ${error.message}`);
-      }
-
-      return data;
+    if (error) {
+      throw new Error(`Error al obtener el estudio: ${error.message}`);
     }
 
-  async findAll() {
-    //obtener todos los pacientes
-  }
+    // normalizar tipo_estudio a un string si vino como objeto por el JOIN
+    if (data && data.tipo_estudio) {
+      const label = data.tipo_estudio.nombre ?? data.tipo_estudio.tipo ?? data.tipo_estudio.label ?? null;
+      data.tipo_estudio = label;
+    }
 
 
-
-  async create(patientData) {
-    // TODO: implementar con Supabase
-    return null;
-  }
-
-  async findById(id) {
-    // TODO: implementar con Supabase
-    return null;
+    return data;
   }
 
   async findByEmail(email) {
-    // TODO: implementar con Supabase
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando usuario por email: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async create(patientData) {
+    // Insertar en tabla `usuarios` y luego en `perfiles_paciente` (si aplica)
+    const { email, password_hash, nombre, apellido, dni, dateOfBirth, phoneNumber, gender } = patientData;
+
+    // Crear usuario
+    const { data: userData, error: userError } = await this.db
+      .from('usuarios')
+      .insert({
+        email,
+        password_hash,
+        nombre,
+        apellido,
+        es_medico: false
+      })
+      .select('id, email, nombre, apellido, es_medico, created_at')
+      .single();
+
+    if (userError) {
+      throw new Error(`Error al crear usuario: ${userError.message}`);
+    }
+
+    // Si hay datos de perfil, insertar en perfiles_paciente
+    // Nota: la tabla `perfiles_paciente` exige `dni` NOT NULL, por lo que solo
+    // intentamos insertar cuando `dni` está presente.
+    let perfil = null;
+    if (dni) {
+      const { data: perfilData, error: perfilError } = await this.db
+        .from('perfiles_paciente')
+        .insert({
+          usuario_id: userData.id,
+          dni: dni,
+          fecha_nacimiento: dateOfBirth || null,
+          telefono: phoneNumber || null,
+          identidad_genero: gender || null
+        })
+        .select('id, usuario_id, dni, fecha_nacimiento, telefono, identidad_genero, created_at')
+        .single();
+
+      if (perfilError) {
+        throw new Error(`Error al crear perfil de paciente: ${perfilError.message}`);
+      }
+
+      perfil = perfilData;
+    }
+
+    const result = {
+      id: userData.id,
+      email: userData.email,
+      nombre: userData.nombre,
+      apellido: userData.apellido,
+      es_medico: userData.es_medico,
+      created_at: userData.created_at,
+      perfil: perfil,
+      password_hash: password_hash,
+      getPublicData() {
+        const { password_hash, ...rest } = this;
+        return rest;
+      }
+    };
+
+    return result;
+  }
+
+  async loginPatient(email) {
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, es_medico, nombre, apellido')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al iniciar sesión: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  // Placeholder stubs for future implementation
+  async findAll() {
+    return [];
+  }
+
+  async findById(id) {
     return null;
   }
 
-
-
   async findActive() {
-    // TODO: implementar con Supabase
     return [];
   }
 
   async update(id, updateData) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async delete(id) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async findByCity(city) {
-    // TODO: implementar con Supabase
     return [];
   }
 
   async addMedicalHistory(patientId, historyEntry) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async addAllergy(patientId, allergy) {
-    // TODO: implementar con Supabase
     return null;
   }
-
-
-
 }
