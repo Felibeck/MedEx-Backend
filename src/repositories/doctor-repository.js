@@ -8,7 +8,7 @@ export class DoctorRepository {
 
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
-      .from('perfileses_paciente')
+      .from('perfiles_paciente')
       .select('id, dni, fecha_nacimiento, identidad_genero, telefono, usuarios (nombre, apellido, email)')
       .eq('dni', dni)
       .is('usuarios.deleted_at', null)
@@ -28,9 +28,9 @@ export class DoctorRepository {
       fecha_nacimiento: data.fecha_nacimiento,
       identidad_genero: data.identidad_genero,
       telefono: data.telefono,
-      nombre: data.usuario?.nombre || null,
-      apellido: data.usuario?.apellido || null,
-      email: data.usuario?.email || null
+      nombre: data.usuarios?.nombre || null,
+      apellido: data.usuarios?.apellido || null,
+      email: data.usuarios?.email || null
     };
   }
 

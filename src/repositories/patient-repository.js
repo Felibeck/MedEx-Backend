@@ -7,7 +7,7 @@ export class PatientRepository {
 
   async getEstudios(patientId) {
     const { data, error } = await this.db
-      .from('estudio')
+      .from('estudios')
       .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion')
       .eq('paciente_id', patientId)
       .order('fecha', { ascending: false });
@@ -30,7 +30,7 @@ export class PatientRepository {
 
   async getEstudioById(estudioId, patientId) {
     const { data, error } = await this.db
-      .from('estudio')
+      .from('estudios')
       .select(`
         id,
         fecha,

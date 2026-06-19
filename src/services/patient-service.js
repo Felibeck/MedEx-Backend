@@ -28,7 +28,14 @@ export class PatientService {
   // Obtener todos los pacientes
   async getAllPatients() {
     const patients = await this.patientRepository.findAll();
-    return patients.map(p => p.getPublicData());
+    return patients.map(p => ({
+      id: p.id,
+      email: p.email,
+      nombre: p.nombre,
+      apellido: p.apellido,
+      es_medico: p.es_medico,
+      created_at: p.created_at
+    }));
   }
 
 
