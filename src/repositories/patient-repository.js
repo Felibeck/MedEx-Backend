@@ -53,14 +53,30 @@ export class PatientRepository {
       .eq('id', estudioId)
       .eq('paciente_id', patientId)
       .maybeSingle();
-
-    if (error) {
-      throw new Error(`Error al obtener el estudio: ${error.message}`);
+      
+      if (error) {
+        throw new Error(`Error al obtener el estudio: ${error.message}`);
+      }
+      
+      return data;
     }
+    
+    
+    async login(email, password)
+    {
+      const { data, error } = await this.db
+        .from('usuarios')
+        .select('id, email, password_hash, es_medico, nombre, apellido')
+        .eq('email', email)
+        .eq('password_hash', password)
+        .single();
 
-    return data;
-  }
+      if (error) {
+        throw new Error(`Error al iniciar sesión: ${error.message}`);
+      }
 
+      return data;
+    }
 
   async findAll() {
     //obtener todos los pacientes
@@ -114,6 +130,7 @@ export class PatientRepository {
     // TODO: implementar con Supabase
     return null;
   }
+
 
 
 }
