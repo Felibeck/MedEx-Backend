@@ -88,8 +88,22 @@ export class PatientService {
       throw new Error('El email ya está registrado');
     }
 
+    // Hashear contraseña antes de crear
+    const passwordHash = await bcrypt.hash(patientData.password, 10);
+
+    const createPayload = {
+      email: patientData.email,
+      password_hash: passwordHash,
+      nombre: patientData.firstName || patientData.nombre,
+      apellido: patientData.lastName || patientData.apellido,
+      dni: patientData.dni || null,
+      dateOfBirth: patientData.dateOfBirth || patientData.fecha_nacimiento || null,
+      phoneNumber: patientData.phoneNumber || patientData.telefono || null,
+      gender: patientData.gender || patientData.identidad_genero || null
+    };
+
     // Crear paciente
-    const patient = await this.patientRepository.create(patientData);
+    const patient = await this.patientRepository.create(createPayload);
     return patient.getPublicData();
   }
 

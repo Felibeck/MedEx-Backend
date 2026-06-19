@@ -16,7 +16,8 @@ export const createDoctorRoutes = (doctorController) => {
 
 
   // Los siguientes endpoints están pendientes de implementación
-  // router.post('/register', (req, res) => doctorController.register(req, res));
+  router.post('/register', (req, res) => doctorController.register(req, res));
+  router.post('/login', (req, res) => doctorController.loginDoctor(req, res));
   // router.get('/', (req, res) => doctorController.getAll(req, res));
   // router.get('/available', (req, res) => doctorController.getAvailable(req, res));
   // router.get('/search/specialty', (req, res) => doctorController.searchBySpecialty(req, res));
