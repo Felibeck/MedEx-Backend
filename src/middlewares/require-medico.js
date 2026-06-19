@@ -16,7 +16,7 @@ export const requireMedico = async (req, res, next) => {
 
     const email = userData.user.email;
     const { data: usuario, error: usuarioError } = await supabase
-      .from('usuario')
+      .from('usuarios')
       .select('*')
       .eq('email', email)
       .maybeSingle();
@@ -29,9 +29,9 @@ export const requireMedico = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Acceso restringido: requiere rol médico' });
     }
 
-    // Obtener perfil_profesional asociado (si existe)
+    // Obtener perfiles_profesional asociado (si existe)
     const { data: perfilProfesional } = await supabase
-      .from('perfil_profesional')
+      .from('perfiles_profesional')
       .select('*')
       .eq('usuario_id', usuario.id)
       .maybeSingle();

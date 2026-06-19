@@ -16,13 +16,11 @@ export class DoctorService {
       profesional_id,
       organizacion_id,
       fecha,
-      ant = null,
-      ago = null,
-      ahf = null,
-      mx = null,
-      eco = null,
-      ef = null,
-      otros = null
+      solicitud_estudio = false,
+      solicitud_receta = false,
+      solicitud_citaprox = false,
+      notas = null,
+
     } = consultaData || {};
 
     if (!dni) {
@@ -47,16 +45,35 @@ export class DoctorService {
       organizacion_id,
       paciente_id: paciente.paciente_id,
       fecha: fechaObj.toISOString(),
-      ant,
-      ago,
-      ahf,
-      mx,
-      eco,
-      ef,
-      otros
+      solicitud_estudio,
+      solicitud_receta,
+      solicitud_citaprox
     };
 
-    return await this.doctorRepository.crearConsulta(insertPayload);
+    // Normalizar `notas`: aceptar string, objeto {nota,..} o array
+    let notasNormalized = null;
+    if (notas) {
+      if (typeof notas === 'string') {
+        notasNormalized = [{ nota: String(notas).trim() }];
+      } else if (Array.isArray(notas)) {
+        notasNormalized = notas.map(n => (typeof n === 'string' ? { nota: String(n).trim() } : n));
+      } else if (typeof notas === 'object' && notas.nota) {
+        notasNormalized = [notas];
+      }
+
+      // filtrar notas vacías
+      if (Array.isArray(notasNormalized)) {
+        notasNormalized = notasNormalized
+          .map(n => ({ ...n, nota: (n.nota || '').toString().trim() }))
+          .filter(n => n.nota.length > 0);
+        if (!notasNormalized.length) notasNormalized = null;
+      }
+    }
+
+    const payload = { ...insertPayload };
+    if (notasNormalized) payload.notas = notasNormalized;
+
+    return await this.doctorRepository.crearConsulta(payload);
   }
 
   async buscarPacientePorDni(dni) {
