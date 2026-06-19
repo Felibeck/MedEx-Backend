@@ -8,7 +8,7 @@ export class PatientRepository {
   async getEstudios(patientId) {
     const { data, error } = await this.db
       .from('estudio')
-      .select('id, tipo, tipo_estudio, categoria, fecha, institucion')
+      .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion')
       .eq('paciente_id', patientId)
       .order('fecha', { ascending: false });
 
@@ -17,7 +17,15 @@ export class PatientRepository {
       throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
     }
 
-    return data || [];
+    const normalized = (data || []).map(row => {
+      if (row.tipo_estudio) {
+        const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
+        return { ...row, tipo_estudio: label };
+      }
+      return row;
+    });
+
+    return normalized;
   }
 
   async getEstudioById(estudioId, patientId) {
@@ -25,9 +33,6 @@ export class PatientRepository {
       .from('estudio')
       .select(`
         id,
-        tipo,
-        tipo_estudio,
-        categoria,
         fecha,
         institucion,
         fotos,
@@ -38,6 +43,7 @@ export class PatientRepository {
         url_archivo,
         descripcion,
         subido_at,
+        tipo_estudio:tipo_estudio_id(*),
         medico:medico_id (
           id,
           matricula,
@@ -57,7 +63,12 @@ export class PatientRepository {
       if (error) {
         throw new Error(`Error al obtener el estudio: ${error.message}`);
       }
-      
+      // normalizar tipo_estudio a un string si vino como objeto por el JOIN
+      if (data && data.tipo_estudio) {
+        const label = data.tipo_estudio.nombre ?? data.tipo_estudio.tipo ?? data.tipo_estudio.label ?? null;
+        data.tipo_estudio = label;
+      }
+
       return data;
     }
     

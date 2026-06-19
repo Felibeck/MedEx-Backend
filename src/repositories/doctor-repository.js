@@ -8,10 +8,10 @@ export class DoctorRepository {
 
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
-      .from('perfil_paciente')
-      .select('id, dni, fecha_nacimiento, identidad_genero, telefono, usuario (nombre, apellido, email)')
+      .from('perfiles_paciente')
+      .select('id, dni, fecha_nacimiento, identidad_genero, telefono, usuarios (nombre, apellido, email)')
       .eq('dni', dni)
-      .is('usuario.deleted_at', null)
+      .is('usuarios.deleted_at', null)
       .maybeSingle();
   
     if (error) {
@@ -36,9 +36,12 @@ export class DoctorRepository {
 
   // Crear consulta
   async crearConsulta(consultaData) {
-    const { data, error } = await this.db
-      .from('consulta')
-      .insert(consultaData)
+    // soporta `notas` anidadas: extract y crear consulta primero
+    const { notas, ...consultaPayload } = consultaData || {};
+
+    const { data: created, error } = await this.db
+      .from('consultas')
+      .insert(consultaPayload)
       .select()
       .maybeSingle();
 
@@ -46,7 +49,28 @@ export class DoctorRepository {
       throw error;
     }
 
-    return data;
+    let insertedNotas = [];
+    if (notas && Array.isArray(notas) && notas.length) {
+      const notesToInsert = notas.map(n => ({
+        consulta_id: created.id,
+        paciente_id: n.paciente_id ?? consultaPayload.paciente_id,
+        nota: n.nota,
+        created_at: n.created_at ?? new Date().toISOString()
+      }));
+
+      const { data: notesData, error: notesError } = await this.db
+        .from('notas')
+        .insert(notesToInsert)
+        .select();
+
+      if (notesError) {
+        throw notesError;
+      }
+
+      insertedNotas = notesData || [];
+    }
+
+    return { ...created, notas: insertedNotas };
   }
 }
 
