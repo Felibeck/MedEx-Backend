@@ -81,6 +81,20 @@ async loginDoctor(email, password)
     return data || null;
   }
 
+  async findByLicenseNumber(licenseNumber) {
+    const { data, error } = await this.db
+      .from('perfiles_profesional')
+      .select('matricula, usuario_id, usuario:usuario_id (id, email, nombre, apellido)')
+      .eq('matricula', licenseNumber)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando matrícula: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
   async create(doctorData) {
     const {
       email,
@@ -109,7 +123,7 @@ async loginDoctor(email, password)
     }
 
     const { data: perfilData, error: perfilError } = await this.db
-      .from('perfil_doctor')
+      .from('perfiles_profesional')
       .insert({
         usuario_id: userData.id,
         organizacion_id,

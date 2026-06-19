@@ -127,6 +127,15 @@ export class DoctorService {
       throw new Error('El email ya está registrado');
     }
 
+    // Verificar si la matrícula ya existe
+    const matricula = doctorData.licenseNumber || doctorData.matricula;
+    if (matricula) {
+      const existingByMatricula = await this.doctorRepository.findByLicenseNumber(matricula);
+      if (existingByMatricula) {
+        throw new Error('La matrícula ya está registrada');
+      }
+    }
+
     // Hashear contraseña
     const passwordHash = await bcrypt.hash(doctorData.password, 10);
 
@@ -137,7 +146,7 @@ export class DoctorService {
       apellido: doctorData.lastName || doctorData.apellido,
       matricula: doctorData.licenseNumber || doctorData.matricula,
       especialidad_medica: doctorData.specialty || doctorData.especialidad || null,
-      organizacion_id: doctorData.organizacion_id || null
+      organizacion_id: doctorData.organizacion_id
     };
 
     const doctor = await this.doctorRepository.create(createPayload);

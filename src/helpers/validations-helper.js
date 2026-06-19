@@ -105,6 +105,10 @@ export const validateDoctorData = (doctorData) => {
     errors.push('El hospital es requerido');
   }
 
+  if (!doctorData.organizacion_id) {
+    errors.push('La organización (organizacion_id) es requerida');
+  }
+
   if (!doctorData.address || doctorData.address.trim() === '') {
     errors.push('La dirección es requerida');
   }
