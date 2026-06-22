@@ -153,6 +153,15 @@ export class DoctorService {
       }
     }
 
+    // Verificar existencia de la organización referenciada para evitar violación FK
+    const organizacionId = doctorData.organizacion_id;
+    if (organizacionId) {
+      const exists = await this.doctorRepository.organizationExists(organizacionId);
+      if (!exists) {
+        throw new Error('Organización no encontrada (organizacion_id inválido)');
+      }
+    }
+
     // Hashear contraseña
     const passwordHash = await bcrypt.hash(doctorData.password, 10);
 

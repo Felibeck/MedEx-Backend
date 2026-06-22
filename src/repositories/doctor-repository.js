@@ -92,10 +92,14 @@ async loginDoctor(email, password)
     }
 
   async findByEmail(email) {
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
+    // Use case-insensitive match to avoid issues with casing/whitespace.
     const { data, error } = await this.db
       .from('usuarios')
       .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
-      .eq('email', email)
+      .ilike('email', normalized)
       .maybeSingle();
 
     if (error) {
@@ -175,6 +179,21 @@ async loginDoctor(email, password)
         return rest;
       }
     };
+  }
+
+  async organizationExists(organizacionId) {
+    if (!organizacionId) return false;
+    const { data, error } = await this.db
+      .from('organizaciones')
+      .select('id')
+      .eq('id', organizacionId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error verificando organización: ${error.message}`);
+    }
+
+    return !!data;
   }
 
 
