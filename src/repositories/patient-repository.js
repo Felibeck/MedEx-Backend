@@ -75,10 +75,13 @@ export class PatientRepository {
   }
 
   async findByEmail(email) {
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
     const { data, error } = await this.db
       .from('usuarios')
       .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
-      .eq('email', email)
+      .ilike('email', normalized)
       .maybeSingle();
 
     if (error) {
@@ -152,10 +155,13 @@ export class PatientRepository {
   }
 
   async loginPatient(email) {
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
     const { data, error } = await this.db
       .from('usuarios')
       .select('id, email, password_hash, es_medico, nombre, apellido')
-      .eq('email', email)
+      .ilike('email', normalized)
       .maybeSingle();
 
     if (error) {
