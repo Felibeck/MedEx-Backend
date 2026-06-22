@@ -16,6 +16,18 @@ export class PatientService {
     return estudios;
   }
 
+  async getPatientConsultas(pacienteId) {
+    return await this.patientRepository.getConsultas(pacienteId);
+  }
+
+  async getPatientConsultaById(consultaId, pacienteId) {
+    const consulta = await this.patientRepository.getConsultaById(consultaId, pacienteId);
+    if (!consulta) {
+      throw new Error('Consulta no encontrada');
+    }
+    return consulta;
+  }
+
   // Obtener detalle de un estudio específico del paciente
   async getPatientEstudioById(estudioId, patientId) {
     const estudio = await this.patientRepository.getEstudioById(estudioId, patientId);

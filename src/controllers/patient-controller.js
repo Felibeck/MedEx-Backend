@@ -6,6 +6,27 @@ export class PatientController {
     this.patientService = patientService;
   }
 
+  async getConsultas(req, res) {
+    try {
+      const pacienteId = req.params.id;
+      const consultas = await this.patientService.getPatientConsultas(pacienteId);
+      res.status(200).json({ success: true, data: consultas });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getConsultaById(req, res) {
+    try {
+      const { id: pacienteId, consultaId } = req.params;
+      const consulta = await this.patientService.getPatientConsultaById(consultaId, pacienteId);
+      res.status(200).json({ success: true, data: consulta });
+    } catch (error) {
+      const status = error.message === 'Consulta no encontrada' ? 404 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
  // Obtener estudios del paciente (listado)
 async getEstudios(req, res) {
   try {

@@ -2,9 +2,16 @@
 // Define los endpoints relacionados con pacientes
 
 import express from 'express';
+import { requirePaciente } from '../middlewares/require-paciente.js';
 
 export const createPatientRoutes = (patientController) => {
   const router = express.Router();
+
+  // Obtener consultas del paciente (requiere auth de paciente)
+  router.get('/:id/consultas', requirePaciente, (req, res) => patientController.getConsultas(req, res));
+
+  // Obtener detalle de una consulta específica (requiere auth de paciente)
+  router.get('/:id/consultas/:consultaId', requirePaciente, (req, res) => patientController.getConsultaById(req, res));
 
   // Obtener estudios del paciente (listado)
   router.get('/:id/estudios', (req, res) => patientController.getEstudios(req, res));

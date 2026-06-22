@@ -171,6 +171,79 @@ export class PatientRepository {
     return data || null;
   }
 
+  async getConsultas(pacienteId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select(`
+        id,
+        fecha,
+        solicitud_estudio,
+        solicitud_receta,
+        solicitud_citaprox,
+        created_at,
+        profesional:profesional_id (
+          id,
+          matricula,
+          especialidad_medica,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        ),
+        notas (
+          id,
+          nota,
+          created_at
+        )
+      `)
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      throw new Error(`Error al obtener consultas del paciente: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  async getConsultaById(consultaId, pacienteId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select(`
+        id,
+        fecha,
+        solicitud_estudio,
+        solicitud_receta,
+        solicitud_citaprox,
+        created_at,
+        profesional:profesional_id (
+          id,
+          matricula,
+          especialidad_medica,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        ),
+        notas (
+          id,
+          nota,
+          created_at
+        )
+      `)
+      .eq('id', consultaId)
+      .eq('paciente_id', pacienteId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al obtener la consulta: ${error.message}`);
+    }
+
+    return data;
+  }
+
   // Placeholder stubs for future implementation
   async findAll() {
     return [];
