@@ -81,6 +81,32 @@ export class DoctorController {
     }
   }
 
+  // Obtener todas las notas del profesional
+  async getNotasByProfesionalId(req, res) {
+    try {
+      const { profesionalId } = req.params;
+
+      if (!profesionalId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID del profesional es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByProfesionalId(profesionalId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async loginDoctor(req, res) {
     try {
       const { email, password } = req.body || {};
