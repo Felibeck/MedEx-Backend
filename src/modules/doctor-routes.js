@@ -11,6 +11,12 @@ export const createDoctorRoutes = (doctorController) => {
   // Registrar nueva consulta
   router.post('/consultas', (req, res) => doctorController.crearConsulta(req, res));
 
+  // Obtener todas las notas del profesional
+  router.get('/:profesionalId/notas', (req, res) => doctorController.getNotasByProfesionalId(req, res));
+
+  // Obtener notas de una consulta específica
+  router.get('/consultas/:consultaId/notas', (req, res) => doctorController.getNotasByConsultaId(req, res));
+
 
 
 

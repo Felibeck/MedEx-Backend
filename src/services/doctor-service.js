@@ -76,6 +76,22 @@ export class DoctorService {
     return await this.doctorRepository.crearConsulta(payload);
   }
 
+  async getNotasByConsultaId(consultaId) {
+    if (!consultaId) {
+      throw new Error('El ID de la consulta es requerido');
+    }
+
+    return await this.doctorRepository.getNotasByConsultaId(consultaId);
+  }
+
+  async getNotasByProfesionalId(profesionalId) {
+    if (!profesionalId) {
+      throw new Error('El ID del profesional es requerido');
+    }
+
+    return await this.doctorRepository.getNotasByProfesionalId(profesionalId);
+  }
+
   async buscarPacientePorDni(dni) {
     const raw = String(dni || '').trim();
     const dniNormalizado = raw.replace(/\D/g, ''); // conservar solo dígitos

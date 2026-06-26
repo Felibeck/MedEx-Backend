@@ -73,8 +73,43 @@ export class DoctorRepository {
     return { ...created, notas: insertedNotas };
   }
 
+  // Obtener notas de una consulta específica
+  async getNotasByConsultaId(consultaId) {
+    const { data, error } = await this.db
+      .from('notas')
+      .select('*')
+      .eq('consulta_id', consultaId)
+      .order('created_at', { ascending: true });
 
+    if (error) {
+      throw error;
+    }
 
+    return data || [];
+  }
+
+  // Obtener todas las notas del profesional
+  async getNotasByProfesionalId(profesionalId) {
+    const { data, error } = await this.db
+      .from('notas')
+      .select(`
+        *,
+        consulta:consulta_id (
+          id,
+          fecha,
+          paciente_id,
+          profesional_id
+        )
+      `)
+      .eq('consulta.profesional_id', profesionalId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return data || [];
+  }
 
 async loginDoctor(email, password)
     {
