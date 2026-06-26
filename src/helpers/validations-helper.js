@@ -51,14 +51,6 @@ export const validatePatientData = (patientData) => {
     errors.push('El género debe ser uno de: femenino, masculino, no_binario, otro, prefiero_no_decir');
   }
 
-  if (!patientData.address || patientData.address.trim() === '') {
-    errors.push('La dirección es requerida');
-  }
-
-  if (!patientData.city || patientData.city.trim() === '') {
-    errors.push('La ciudad es requerida');
-  }
-
   return {
     isValid: errors.length === 0,
     errors
