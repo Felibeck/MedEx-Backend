@@ -116,24 +116,6 @@ export class DoctorController {
     }
   }
 
-  // Método en español para registrar doctor (alias de register)
-  async register(req, res) {
-    try {
-      const doctorData = req.body || {};
-      const newDoctor = await this.doctorService.registerDoctor(doctorData);
-
-      res.status(201).json({
-        success: true,
-        message: 'Doctor registrado exitosamente',
-        data: newDoctor
-      });
-    } catch (error) {
-      res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-  }
 
   // Otros métodos (comentados) permanecen sin cambios
 }

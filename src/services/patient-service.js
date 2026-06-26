@@ -21,7 +21,7 @@ export class PatientService {
     const estudio = await this.patientRepository.getEstudioById(estudioId, patientId);
     if (!estudio) {
       throw new Error('Estudio no encontrado');
-    }
+    }  
     return estudio;
   }
 
