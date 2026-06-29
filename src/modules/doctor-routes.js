@@ -2,20 +2,24 @@
 // Define los endpoints relacionados con doctores
 
 import express from 'express';
+import { requireMedico } from '../middlewares/require-medico.js';
 
 export const createDoctorRoutes = (doctorController) => {
   const router = express.Router();
-  
-  router.get('/pacientes/buscar', (req, res) => doctorController.buscarPacientePorDni(req, res));
+
+  router.get('/pacientes/buscar', requireMedico, (req, res) => doctorController.buscarPacientePorDni(req, res));
+
+  // Historial clínico de un paciente (por pacienteId de perfiles_paciente)
+  router.get('/pacientes/:pacienteId/historial', requireMedico, (req, res) => doctorController.getHistorialClinico(req, res));
 
   // Registrar nueva consulta
-  router.post('/consultas', (req, res) => doctorController.crearConsulta(req, res));
+  router.post('/consultas', requireMedico, (req, res) => doctorController.crearConsulta(req, res));
 
   // Obtener todas las notas del profesional
-  router.get('/:profesionalId/notas', (req, res) => doctorController.getNotasByProfesionalId(req, res));
+  router.get('/:profesionalId/notas', requireMedico, (req, res) => doctorController.getNotasByProfesionalId(req, res));
 
   // Obtener notas de una consulta específica
-  router.get('/consultas/:consultaId/notas', (req, res) => doctorController.getNotasByConsultaId(req, res));
+  router.get('/consultas/:consultaId/notas', requireMedico, (req, res) => doctorController.getNotasByConsultaId(req, res));
 
 
 

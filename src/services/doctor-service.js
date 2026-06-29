@@ -92,6 +92,14 @@ export class DoctorService {
     return await this.doctorRepository.getNotasByProfesionalId(profesionalId);
   }
 
+  async getHistorialClinico(pacienteId) {
+    if (!pacienteId) {
+      throw new Error('El ID del paciente es requerido');
+    }
+
+    return await this.doctorRepository.getHistorialClinico(pacienteId);
+  }
+
   async buscarPacientePorDni(dni) {
     const raw = String(dni || '').trim();
     const dniNormalizado = raw.replace(/\D/g, ''); // conservar solo dígitos

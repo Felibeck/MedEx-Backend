@@ -111,6 +111,61 @@ export class DoctorRepository {
     return data || [];
   }
 
+  async getHistorialClinico(pacienteId) {
+    const { data: consultas, error: consultasError } = await this.db
+      .from('consultas')
+      .select(`
+        id,
+        fecha,
+        solicitud_estudio,
+        solicitud_receta,
+        solicitud_citaprox,
+        profesional:profesional_id (
+          id,
+          matricula,
+          especialidad_medica,
+          usuario:usuario_id (
+            nombre,
+            apellido
+          )
+        ),
+        notas (
+          id,
+          nota,
+          created_at
+        )
+      `)
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (consultasError) {
+      throw consultasError;
+    }
+
+    const { data: estudios, error: estudiosError } = await this.db
+      .from('estudios')
+      .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (estudiosError) {
+      throw estudiosError;
+    }
+
+    const estudiosNormalizados = (estudios || []).map(row => {
+      if (row.tipo_estudio) {
+        const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
+        return { ...row, tipo_estudio: label };
+      }
+      return row;
+    });
+
+    return {
+      consultas: consultas || [],
+      estudios: estudiosNormalizados
+    };
+  }
+
 async loginDoctor(email, password)
     {
       const { data, error } = await this.db
