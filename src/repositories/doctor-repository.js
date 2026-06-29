@@ -36,12 +36,9 @@ export class DoctorRepository {
 
   // Crear consulta
   async crearConsulta(consultaData) {
-    // soporta `notas` anidadas: extract y crear consulta primero
-    const { notas, ...consultaPayload } = consultaData || {};
-
     const { data: created, error } = await this.db
       .from('consultas')
-      .insert(consultaPayload)
+      .insert(consultaData)
       .select()
       .maybeSingle();
 
@@ -49,66 +46,49 @@ export class DoctorRepository {
       throw error;
     }
 
-    let insertedNotas = [];
-    if (notas && Array.isArray(notas) && notas.length) {
-      const notesToInsert = notas.map(n => ({
-        consulta_id: created.id,
-        paciente_id: n.paciente_id ?? consultaPayload.paciente_id,
-        nota: n.nota,
-        created_at: n.created_at ?? new Date().toISOString()
-      }));
-
-      const { data: notesData, error: notesError } = await this.db
-        .from('notas')
-        .insert(notesToInsert)
-        .select();
-
-      if (notesError) {
-        throw notesError;
-      }
-
-      insertedNotas = notesData || [];
-    }
-
-    return { ...created, notas: insertedNotas };
+    return created;
   }
 
   // Obtener notas de una consulta específica
   async getNotasByConsultaId(consultaId) {
     const { data, error } = await this.db
-      .from('notas')
-      .select('*')
-      .eq('consulta_id', consultaId)
-      .order('created_at', { ascending: true });
+      .from('consultas')
+      .select('id, notas')
+      .eq('id', consultaId)
+      .maybeSingle();
 
     if (error) {
       throw error;
     }
 
-    return data || [];
+    if (!data || !data.notas) {
+      return [];
+    }
+
+    return [{ consulta_id: data.id, nota: data.notas }];
   }
 
   // Obtener todas las notas del profesional
   async getNotasByProfesionalId(profesionalId) {
     const { data, error } = await this.db
-      .from('notas')
-      .select(`
-        *,
-        consulta:consulta_id (
-          id,
-          fecha,
-          paciente_id,
-          profesional_id
-        )
-      `)
-      .eq('consulta.profesional_id', profesionalId)
-      .order('created_at', { ascending: false });
+      .from('consultas')
+      .select('id, fecha, paciente_id, profesional_id, notas')
+      .eq('profesional_id', profesionalId)
+      .order('fecha', { ascending: false });
 
     if (error) {
       throw error;
     }
 
-    return data || [];
+    return (data || [])
+      .filter(row => row.notas != null)
+      .map(row => ({
+        consulta_id: row.id,
+        nota: row.notas,
+        fecha: row.fecha,
+        paciente_id: row.paciente_id,
+        profesional_id: row.profesional_id
+      }));
   }
 
 async loginDoctor(email, password)
