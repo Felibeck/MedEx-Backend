@@ -50,28 +50,32 @@ export class DoctorService {
       solicitud_citaprox
     };
 
-    // Normalizar `notas`: aceptar string, objeto {nota,..} o array
-    let notasNormalized = null;
+    // Normalizar `notas`: cada consulta ahora tiene un único campo `notas` de tipo string.
+    let nota = null;
     if (notas) {
       if (typeof notas === 'string') {
-        notasNormalized = [{ nota: String(notas).trim() }];
-      } else if (Array.isArray(notas)) {
-        notasNormalized = notas.map(n => (typeof n === 'string' ? { nota: String(n).trim() } : n));
+        nota = notas.trim();
+      } else if (Array.isArray(notas) && notas.length) {
+        const first = notas.find(n => {
+          if (typeof n === 'string') return n.trim().length > 0;
+          return n && typeof n === 'object' && String(n.nota || '').trim().length > 0;
+        });
+        if (typeof first === 'string') {
+          nota = first.trim();
+        } else if (first && typeof first === 'object' && first.nota) {
+          nota = String(first.nota).trim();
+        }
       } else if (typeof notas === 'object' && notas.nota) {
-        notasNormalized = [notas];
+        nota = String(notas.nota).trim();
       }
 
-      // filtrar notas vacías
-      if (Array.isArray(notasNormalized)) {
-        notasNormalized = notasNormalized
-          .map(n => ({ ...n, nota: (n.nota || '').toString().trim() }))
-          .filter(n => n.nota.length > 0);
-        if (!notasNormalized.length) notasNormalized = null;
+      if (nota && nota.length === 0) {
+        nota = null;
       }
     }
 
     const payload = { ...insertPayload };
-    if (notasNormalized) payload.notas = notasNormalized;
+    if (nota !== null) payload.notas = nota;
 
     return await this.doctorRepository.crearConsulta(payload);
   }

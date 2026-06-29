@@ -106,6 +106,33 @@ export class DoctorController {
       });
     }
   }
+  
+// Obtener notas de una consulta específica
+  async getNotasByConsultaId(req, res) {
+    try {
+      const { consultaId } = req.params;
+
+      if (!consultaId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la consulta es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByConsultaId(consultaId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      const status = error.message === 'Consulta no encontrada' ? 404 : 500;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
   async getMisPacientes(req, res) {
     try {
