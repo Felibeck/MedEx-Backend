@@ -134,6 +134,56 @@ export class DoctorController {
     }
   }
 
+  async getNotasByConsultaId(req, res) {
+    try {
+      const { consultaId } = req.params;
+
+      if (!consultaId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la consulta es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByConsultaId(consultaId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async getHistorialClinico(req, res) {
+    try {
+      const { pacienteId } = req.params;
+
+      if (!pacienteId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID del paciente es requerido'
+        });
+      }
+
+      const historial = await this.doctorService.getHistorialClinico(pacienteId);
+
+      res.status(200).json({
+        success: true,
+        data: historial
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async loginDoctor(req, res) {
     try {
       const { email, password } = req.body || {};
