@@ -9,6 +9,9 @@ export const createDoctorRoutes = (doctorController) => {
 
   router.get('/pacientes/buscar', requireMedico, (req, res) => doctorController.buscarPacientePorDni(req, res));
 
+  // Todos los pacientes del médico autenticado (al menos una consulta)
+  router.get('/mis-pacientes', requireMedico, (req, res) => doctorController.getMisPacientes(req, res));
+
   // Historial clínico de un paciente (por pacienteId de perfiles_paciente)
   router.get('/pacientes/:pacienteId/historial', requireMedico, (req, res) => doctorController.getHistorialClinico(req, res));
 

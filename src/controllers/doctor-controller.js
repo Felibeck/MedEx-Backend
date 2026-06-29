@@ -107,6 +107,31 @@ export class DoctorController {
     }
   }
 
+  async getMisPacientes(req, res) {
+    try {
+      const perfilProfesional = req.perfil_profesional;
+
+      if (!perfilProfesional?.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontró el perfil profesional del médico autenticado'
+        });
+      }
+
+      const pacientes = await this.doctorService.getPacientesByProfesional(perfilProfesional.id);
+
+      res.status(200).json({
+        success: true,
+        data: pacientes
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async getNotasByConsultaId(req, res) {
     try {
       const { consultaId } = req.params;

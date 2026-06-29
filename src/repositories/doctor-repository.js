@@ -9,25 +9,27 @@ export class DoctorRepository {
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
       .from('perfiles_paciente')
-      .select('id, dni, fecha_nacimiento, identidad_genero, telefono, usuarios (nombre, apellido, email)')
+      .select('id, dni, fecha_nacimiento, identidad_genero, telefono, obra_social, cobertura_estado, usuarios (nombre, apellido, email)')
       .eq('dni', dni)
       .is('usuarios.deleted_at', null)
       .maybeSingle();
-  
+
     if (error) {
       throw error;
     }
-  
+
     if (!data) {
       return null;
     }
-  
+
     return {
       paciente_id: data.id,
       dni: data.dni,
       fecha_nacimiento: data.fecha_nacimiento,
       identidad_genero: data.identidad_genero,
       telefono: data.telefono,
+      obra_social: data.obra_social || null,
+      cobertura_estado: data.cobertura_estado || 'sin_informacion',
       nombre: data.usuarios?.nombre || null,
       apellido: data.usuarios?.apellido || null,
       email: data.usuarios?.email || null
@@ -109,6 +111,62 @@ export class DoctorRepository {
     }
 
     return data || [];
+  }
+
+  async getPacientesByProfesional(profesionalId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select(`
+        paciente_id,
+        fecha,
+        paciente:paciente_id (
+          id,
+          dni,
+          fecha_nacimiento,
+          telefono,
+          identidad_genero,
+          obra_social,
+          cobertura_estado,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        )
+      `)
+      .eq('profesional_id', profesionalId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Deduplicar: un registro por paciente con la consulta más reciente
+    const seen = new Set();
+    const pacientes = [];
+    for (const row of (data || [])) {
+      if (!seen.has(row.paciente_id)) {
+        seen.add(row.paciente_id);
+        const p = row.paciente;
+        if (p) {
+          pacientes.push({
+            paciente_id: p.id,
+            dni: p.dni,
+            fecha_nacimiento: p.fecha_nacimiento,
+            telefono: p.telefono,
+            identidad_genero: p.identidad_genero,
+            obra_social: p.obra_social || null,
+            cobertura_estado: p.cobertura_estado || 'sin_informacion',
+            nombre: p.usuario?.nombre || null,
+            apellido: p.usuario?.apellido || null,
+            email: p.usuario?.email || null,
+            ultima_consulta: row.fecha
+          });
+        }
+      }
+    }
+
+    return pacientes;
   }
 
   async getHistorialClinico(pacienteId) {

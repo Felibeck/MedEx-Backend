@@ -1,7 +1,7 @@
 // Servicio de Doctores
 // Contiene la lógica de negocio para doctores
 
-import { validateDoctorData, validateDoctorUpdate } from '../helpers/validations-helper.js';
+import { validateDoctorData } from '../helpers/validations-helper.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -90,6 +90,14 @@ export class DoctorService {
     }
 
     return await this.doctorRepository.getNotasByProfesionalId(profesionalId);
+  }
+
+  async getPacientesByProfesional(profesionalId) {
+    if (!profesionalId) {
+      throw new Error('El ID del profesional es requerido');
+    }
+
+    return await this.doctorRepository.getPacientesByProfesional(profesionalId);
   }
 
   async getHistorialClinico(pacienteId) {
