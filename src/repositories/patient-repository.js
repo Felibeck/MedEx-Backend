@@ -5,11 +5,29 @@ export class PatientRepository {
     this.db = database;
   }
 
+  async resolvePacienteId(patientId) {
+    if (!patientId) return null;
+
+    const { data, error } = await this.db
+      .from('perfiles_paciente')
+      .select('id')
+      .eq('usuario_id', patientId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al resolver paciente: ${error.message}`);
+    }
+
+    return data?.id || patientId;
+  }
+
   async getEstudios(patientId) {
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
+
     const { data, error } = await this.db
       .from('estudios')
       .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion')
-      .eq('paciente_id', patientId)
+      .eq('paciente_id', resolvedPacienteId)
       .order('fecha', { ascending: false });
 
     if (error) {
@@ -29,6 +47,8 @@ export class PatientRepository {
   }
 
   async getEstudioById(estudioId, patientId) {
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
+
     const { data, error } = await this.db
       .from('estudios')
       .select(`
@@ -57,7 +77,7 @@ export class PatientRepository {
         )
       `)
       .eq('id', estudioId)
-      .eq('paciente_id', patientId)
+      .eq('paciente_id', resolvedPacienteId)
       .maybeSingle();
 
     if (error) {
