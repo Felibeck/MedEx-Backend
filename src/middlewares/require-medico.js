@@ -16,7 +16,12 @@ export const requireMedico = async (req, res, next) => {
       return res.status(500).json({ success: false, message: 'JWT_SECRET no configurado en el servidor' });
     }
 
-    const decoded = jwt.verify(token, jwtSecret);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, jwtSecret);
+    } catch (verifyError) {
+      return res.status(401).json({ success: false, message: 'Token inválido o expirado' });
+    }
 
     if (!decoded || decoded.es_medico !== true) {
       return res.status(403).json({ success: false, message: 'Acceso restringido: requiere rol médico' });
