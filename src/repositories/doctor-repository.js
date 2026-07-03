@@ -150,11 +150,34 @@ export class DoctorRepository {
   }
 
   async getHistorialClinico(pacienteId) {
+    const { data: paciente, error: pacienteError } = await this.db
+      .from('perfiles_paciente')
+      .select(`
+        id,
+        dni,
+        fecha_nacimiento,
+        identidad_genero,
+        telefono,
+        obra_social,
+        cobertura_estado,
+        profile_picture,
+        tipo_sangre:tipo_sangre_id (nombre),
+        usuario:usuario_id (nombre, apellido, email)
+      `)
+      .eq('id', pacienteId)
+      .maybeSingle();
+
+    if (pacienteError) {
+      throw pacienteError;
+    }
+
     const { data: consultas, error: consultasError } = await this.db
       .from('consultas')
       .select(`
         id,
         fecha,
+        diagnostico,
+        notas,
         solicitud_estudio,
         solicitud_receta,
         solicitud_citaprox,
@@ -167,10 +190,8 @@ export class DoctorRepository {
             apellido
           )
         ),
-        notas (
-          id,
-          nota,
-          created_at
+        organizacion:organizacion_id (
+          nombre
         )
       `)
       .eq('paciente_id', pacienteId)
@@ -180,14 +201,45 @@ export class DoctorRepository {
       throw consultasError;
     }
 
+    const consultaIds = (consultas || []).map(c => c.id);
+
+    const { data: prescripciones, error: prescripcionesError } = consultaIds.length
+      ? await this.db
+        .from('prescripciones')
+        .select('id, consulta_id, medicamento, indicaciones, activa')
+        .in('consulta_id', consultaIds)
+      : { data: [], error: null };
+
+    if (prescripcionesError) {
+      throw prescripcionesError;
+    }
+
     const { data: estudios, error: estudiosError } = await this.db
       .from('estudios')
-      .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false });
 
     if (estudiosError) {
       throw estudiosError;
+    }
+
+    const { data: alergias, error: alergiasError } = await this.db
+      .from('alergias')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (alergiasError) {
+      throw alergiasError;
+    }
+
+    const { data: condicionesCronicas, error: condicionesError } = await this.db
+      .from('condiciones_cronicas')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (condicionesError) {
+      throw condicionesError;
     }
 
     const estudiosNormalizados = (estudios || []).map(row => {
@@ -198,8 +250,34 @@ export class DoctorRepository {
       return row;
     });
 
+    const consultasConDetalle = (consultas || []).map(consulta => ({
+      ...consulta,
+      prescripciones: (prescripciones || []).filter(p => p.consulta_id === consulta.id),
+      adjuntos: estudiosNormalizados
+        .filter(e => e.consulta_id === consulta.id)
+        .map(({ id, nombre_archivo, url_archivo }) => ({ id, nombre_archivo, url_archivo }))
+    }));
+
     return {
-      consultas: consultas || [],
+      paciente: paciente
+        ? {
+          paciente_id: paciente.id,
+          dni: paciente.dni,
+          fecha_nacimiento: paciente.fecha_nacimiento,
+          identidad_genero: paciente.identidad_genero,
+          telefono: paciente.telefono,
+          obra_social: paciente.obra_social || null,
+          cobertura_estado: paciente.cobertura_estado || 'sin_informacion',
+          foto_perfil: paciente.profile_picture || null,
+          grupo_sanguineo: paciente.tipo_sangre?.nombre || null,
+          nombre: paciente.usuario?.nombre || null,
+          apellido: paciente.usuario?.apellido || null,
+          email: paciente.usuario?.email || null
+        }
+        : null,
+      alergias: alergias || [],
+      condicionesCronicas: condicionesCronicas || [],
+      consultas: consultasConDetalle,
       estudios: estudiosNormalizados
     };
   }
