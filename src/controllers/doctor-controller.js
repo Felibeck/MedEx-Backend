@@ -46,7 +46,29 @@ export class DoctorController {
         body = { ...req.query };
       }
 
-      const created = await this.doctorService.createConsulta(body);
+      const perfilProfesional = req.perfil_profesional;
+
+      if (!perfilProfesional?.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontró el perfil profesional del médico autenticado'
+        });
+      }
+
+      if (!perfilProfesional.organizacion_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'El médico no tiene una organización asociada'
+        });
+      }
+
+      // El profesional y su organización se derivan siempre del médico
+      // autenticado (no del body), evitando que el cliente los omita/falsifique.
+      const created = await this.doctorService.createConsulta({
+        ...body,
+        profesional_id: perfilProfesional.id,
+        organizacion_id: perfilProfesional.organizacion_id
+      });
 
       res.status(201).json({
         success: true,

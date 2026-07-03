@@ -286,7 +286,7 @@ async loginDoctor(email, password)
     {
       const { data, error } = await this.db
         .from('usuarios')
-        .select('id, email, password_hash, es_medico, nombre, apellido')
+        .select('id, email, password_hash, es_medico, nombre, apellido, perfiles_profesional (id, organizacion_id, matricula, especialidad_medica)')
         .eq('email', email)
         .maybeSingle();
 
@@ -294,7 +294,15 @@ async loginDoctor(email, password)
         throw new Error(`Error al iniciar sesión: ${error.message}`);
       }
 
-      return data || null;
+      if (!data) {
+        return null;
+      }
+
+      const perfilProfesional = Array.isArray(data.perfiles_profesional)
+        ? data.perfiles_profesional[0] || null
+        : data.perfiles_profesional || null;
+
+      return { ...data, perfil_profesional: perfilProfesional };
     }
 
   async findByEmail(email) {

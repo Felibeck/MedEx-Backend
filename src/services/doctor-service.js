@@ -41,8 +41,8 @@ export class DoctorService {
     }
 
     const insertPayload = {
-      profesional_id,
-      organizacion_id,
+      profesional_id: profesional_id,
+      organizacion_id: organizacion_id,
       paciente_id: paciente.paciente_id,
       fecha: fechaObj.toISOString(),
       solicitud_estudio,
@@ -160,7 +160,11 @@ export class DoctorService {
       email: user.email,
       nombre: user.nombre,
       apellido: user.apellido,
-      es_medico: user.es_medico
+      es_medico: user.es_medico,
+      perfil_profesional_id: user.perfil_profesional?.id || null,
+      organizacion_id: user.perfil_profesional?.organizacion_id || null,
+      matricula: user.perfil_profesional?.matricula || null,
+      especialidad_medica: user.perfil_profesional?.especialidad_medica || null
     };
 
     return { user: publicUser, token };
