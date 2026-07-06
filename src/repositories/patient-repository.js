@@ -94,6 +94,42 @@ export class PatientRepository {
     return data;
   }
 
+  async createEstudio(patientId, estudioData) {
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
+    if (!resolvedPacienteId) {
+      throw new Error('Paciente no encontrado');
+    }
+
+    const payload = {
+      paciente_id: resolvedPacienteId,
+      consulta_id: estudioData.consulta_id || null,
+      nombre_archivo: estudioData.nombre_archivo,
+      url_archivo: estudioData.url_archivo,
+      descripcion: estudioData.descripcion || null,
+      subido_at: estudioData.subido_at || new Date().toISOString(),
+      fecha: estudioData.fecha,
+      institucion: estudioData.institucion,
+      fotos: Array.isArray(estudioData.fotos) ? estudioData.fotos : [],
+      informe: estudioData.informe || null,
+      paciente_dob: estudioData.paciente_dob || null,
+      metadata_dicom: null,
+      medico_id: estudioData.medico_id || null,
+      tipo_estudio_id: estudioData.tipo_estudio_id || null
+    };
+
+    const { data, error } = await this.db
+      .from('estudios')
+      .insert(payload)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new Error(`Error al crear estudio: ${error.message}`);
+    }
+
+    return data;
+  }
+
   async findByEmail(email) {
     const normalized = (email || '').toString().trim().toLowerCase();
     if (!normalized) return null;

@@ -30,6 +30,23 @@ async getEstudios(req, res) {
     }
   }
 
+  async uploadEstudio(req, res) {
+    try {
+      const patientId = req.params.id;
+      const estudioData = req.body;
+      const createdEstudio = await this.patientService.uploadPatientEstudio(patientId, estudioData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Estudio cargado correctamente',
+        data: createdEstudio
+      });
+    } catch (error) {
+      const status = error.message && error.message.startsWith('Errores de validación') ? 400 : error.message === 'Paciente no encontrado' ? 404 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
   // Obtener todos los pacientes
   async getAll(req, res) {
     try {

@@ -11,6 +11,7 @@
 
     // Obtener detalle de un estudio específico
     router.get('/:id/estudios/:estudioId', (req, res) => patientController.getEstudioById(req, res));
+    router.post('/:id/estudios', (req, res) => patientController.uploadEstudio(req, res));
 
     // Obtener todos los pacientes
     router.get('/', (req, res) => patientController.getAll(req, res));

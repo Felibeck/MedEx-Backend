@@ -145,6 +145,35 @@ export const validatePatientUpdate = (updateData) => {
   };
 };
 
+export const validateEstudioData = (estudioData) => {
+  const errors = [];
+
+  if (!estudioData.nombre_archivo || estudioData.nombre_archivo.toString().trim() === '') {
+    errors.push('El nombre del archivo es requerido');
+  }
+
+  if (!estudioData.url_archivo || estudioData.url_archivo.toString().trim() === '') {
+    errors.push('La URL del archivo es requerida');
+  }
+
+  if (!estudioData.fecha) {
+    errors.push('La fecha del estudio es requerida');
+  }
+
+  if (!estudioData.institucion || estudioData.institucion.toString().trim() === '') {
+    errors.push('La institución es requerida');
+  }
+
+  if (!estudioData.tipo_estudio_id) {
+    errors.push('El tipo de estudio es requerido');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 export const validateDoctorUpdate = (updateData) => {
   const errors = [];
 

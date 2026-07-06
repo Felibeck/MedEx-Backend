@@ -1,7 +1,7 @@
 // Servicio de Pacientes
 // Contiene la lógica de negocio para pacientes
 
-import { validatePatientData, validatePatientUpdate } from '../helpers/validations-helper.js';
+import { validatePatientData, validatePatientUpdate, validateEstudioData } from '../helpers/validations-helper.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -23,6 +23,16 @@ export class PatientService {
       throw new Error('Estudio no encontrado');
     }  
     return estudio;
+  }
+
+  async uploadPatientEstudio(patientId, estudioData) {
+    const validation = validateEstudioData(estudioData);
+    if (!validation.isValid) {
+      throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
+    }
+
+    const createdEstudio = await this.patientRepository.createEstudio(patientId, estudioData);
+    return createdEstudio;
   }
 
   // Obtener todos los pacientes
