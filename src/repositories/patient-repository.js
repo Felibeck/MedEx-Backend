@@ -5,76 +5,258 @@ export class PatientRepository {
     this.db = database;
   }
 
+  async resolvePacienteId(patientId) {
+    if (!patientId) return null;
+
+    const { data, error } = await this.db
+      .from('perfiles_paciente')
+      .select('id')
+      .eq('usuario_id', patientId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al resolver paciente: ${error.message}`);
+    }
+
+    return data?.id || patientId;
+  }
+
   async getEstudios(patientId) {
-  console.log('Supabase URL:', process.env.SUPABASE_URL);
-  console.log('Buscando estudios para:', patientId);
-  
-  const { data, error } = await this.db
-    .from('estudio')
-    .select('id, tipo, nombre_archivo, url_archivo, descripcion, subido_at')
-    .eq('paciente_id', patientId);
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
 
-  if (error) {
-    console.error('Error completo:', JSON.stringify(error, null, 2));  // ← agregá esto
-    throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    const { data, error } = await this.db
+      .from('estudios')
+      .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion')
+      .eq('paciente_id', resolvedPacienteId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      console.error('Error completo:', JSON.stringify(error, null, 2));
+      throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    }
+
+    const normalized = (data || []).map(row => {
+      if (row.tipo_estudio) {
+        const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
+        return { ...row, tipo_estudio: label };
+      }
+      return row;
+    });
+
+    return normalized;
   }
 
-  return data || [];
-}
+  async getEstudioById(estudioId, patientId) {
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
+
+    const { data, error } = await this.db
+      .from('estudios')
+      .select(`
+        id,
+        fecha,
+        institucion,
+        fotos,
+        informe,
+        paciente_dob,
+        metadata_dicom,
+        nombre_archivo,
+        url_archivo,
+        descripcion,
+        subido_at,
+        tipo_estudio:tipo_estudio_id(*),
+        medico:medico_id (
+          id,
+          matricula,
+          especialidad_medica,
+          profile_picture,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        )
+      `)
+      .eq('id', estudioId)
+      .eq('paciente_id', resolvedPacienteId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al obtener el estudio: ${error.message}`);
+    }
+
+    // normalizar tipo_estudio a un string si vino como objeto por el JOIN
+    if (data && data.tipo_estudio) {
+      const label = data.tipo_estudio.nombre ?? data.tipo_estudio.tipo ?? data.tipo_estudio.label ?? null;
+      data.tipo_estudio = label;
+    }
 
 
-  async findAll() {
-    //obtener todos los pacientes
+    return data;
   }
 
+  async createEstudio(patientId, estudioData) {
+    const resolvedPacienteId = await this.resolvePacienteId(patientId);
+    if (!resolvedPacienteId) {
+      throw new Error('Paciente no encontrado');
+    }
 
+    const payload = {
+      paciente_id: resolvedPacienteId,
+      consulta_id: estudioData.consulta_id || null,
+      nombre_archivo: estudioData.nombre_archivo,
+      url_archivo: estudioData.url_archivo,
+      descripcion: estudioData.descripcion || null,
+      subido_at: estudioData.subido_at || new Date().toISOString(),
+      fecha: estudioData.fecha,
+      institucion: estudioData.institucion,
+      fotos: Array.isArray(estudioData.fotos) ? estudioData.fotos : [],
+      informe: estudioData.informe || null,
+      paciente_dob: estudioData.paciente_dob || null,
+      metadata_dicom: null,
+      medico_id: estudioData.medico_id || null,
+      tipo_estudio_id: estudioData.tipo_estudio_id || null
+    };
 
-  async create(patientData) {
-    // TODO: implementar con Supabase
-    return null;
-  }
+    const { data, error } = await this.db
+      .from('estudios')
+      .insert(payload)
+      .select('*')
+      .single();
 
-  async findById(id) {
-    // TODO: implementar con Supabase
-    return null;
+    if (error) {
+      throw new Error(`Error al crear estudio: ${error.message}`);
+    }
+
+    return data;
   }
 
   async findByEmail(email) {
-    // TODO: implementar con Supabase
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
+      .ilike('email', normalized)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando usuario por email: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async create(patientData) {
+    // Insertar en tabla `usuarios` y luego en `perfiles_paciente` (si aplica)
+    const { email, password_hash, nombre, apellido, dni, dateOfBirth, phoneNumber, gender } = patientData;
+
+    // Crear usuario
+    const { data: userData, error: userError } = await this.db
+      .from('usuarios')
+      .insert({
+        email,
+        password_hash,
+        nombre,
+        apellido,
+        es_medico: false
+      })
+      .select('id, email, nombre, apellido, es_medico, created_at')
+      .single();
+
+    if (userError) {
+      throw new Error(`Error al crear usuario: ${userError.message}`);
+    }
+
+    // Si hay datos de perfil, insertar en perfiles_paciente
+    // Nota: la tabla `perfiles_paciente` exige `dni` NOT NULL, por lo que solo
+    // intentamos insertar cuando `dni` está presente.
+    let perfil = null;
+    if (dni) {
+      const { data: perfilData, error: perfilError } = await this.db
+        .from('perfiles_paciente')
+        .insert({
+          usuario_id: userData.id,
+          dni: dni,
+          fecha_nacimiento: dateOfBirth || null,
+          telefono: phoneNumber || null,
+          identidad_genero: gender || null
+        })
+        .select('id, usuario_id, dni, fecha_nacimiento, telefono, identidad_genero, created_at')
+        .single();
+
+      if (perfilError) {
+        throw new Error(`Error al crear perfil de paciente: ${perfilError.message}`);
+      }
+
+      perfil = perfilData;
+    }
+
+    const result = {
+      id: userData.id,
+      email: userData.email,
+      nombre: userData.nombre,
+      apellido: userData.apellido,
+      es_medico: userData.es_medico,
+      created_at: userData.created_at,
+      perfil: perfil,
+      password_hash: password_hash,
+      getPublicData() {
+        const { password_hash, ...rest } = this;
+        return rest;
+      }
+    };
+
+    return result;
+  }
+
+  async loginPatient(email) {
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, es_medico, nombre, apellido')
+      .ilike('email', normalized)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al iniciar sesión: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  // Placeholder stubs for future implementation
+  async findAll() {
+    return [];
+  }
+
+  async findById(id) {
     return null;
   }
 
-
-
   async findActive() {
-    // TODO: implementar con Supabase
     return [];
   }
 
   async update(id, updateData) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async delete(id) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async findByCity(city) {
-    // TODO: implementar con Supabase
     return [];
   }
 
   async addMedicalHistory(patientId, historyEntry) {
-    // TODO: implementar con Supabase
     return null;
   }
 
   async addAllergy(patientId, allergy) {
-    // TODO: implementar con Supabase
     return null;
   }
-
-
 }

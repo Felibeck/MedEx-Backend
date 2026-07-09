@@ -6,7 +6,7 @@ export class DoctorController {
     this.doctorService = doctorService;
   }
 
-// Buscar paciente por DNI
+  // Buscar paciente por DNI
   async buscarPacientePorDni(req, res) {
     try {
       const dni = req.query.dni;
@@ -37,16 +37,38 @@ export class DoctorController {
   // Crear nueva consulta desde profesional sobre un paciente buscado por DNI
   async crearConsulta(req, res) {
     try {
-      const body = req.body || {};
+      let body = req.body || {};
 
-      if (!Object.keys(body).length) {
+      // Si el cliente envía los datos por query params en lugar de body (p.ej.
+      // POST /consultas?dni=...), aceptar también esa forma para compatibilidad
+      // con la UI que usa query params.
+      if (!Object.keys(body).length && Object.keys(req.query || {}).length) {
+        body = { ...req.query };
+      }
+
+      const perfilProfesional = req.perfil_profesional;
+
+      if (!perfilProfesional?.id) {
         return res.status(400).json({
           success: false,
-          message: 'El body de la petición es requerido y debe ser JSON con los campos necesarios'
+          message: 'No se encontró el perfil profesional del médico autenticado'
         });
       }
 
-      const created = await this.doctorService.createConsulta(body);
+      if (!perfilProfesional.organizacion_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'El médico no tiene una organización asociada'
+        });
+      }
+
+      // El profesional y su organización se derivan siempre del médico
+      // autenticado (no del body), evitando que el cliente los omita/falsifique.
+      const created = await this.doctorService.createConsulta({
+        ...body,
+        profesional_id: perfilProfesional.id,
+        organizacion_id: perfilProfesional.organizacion_id
+      });
 
       res.status(201).json({
         success: true,
@@ -55,8 +77,6 @@ export class DoctorController {
     } catch (error) {
       const clientErrors = new Set([
         'Se requiere dni del paciente',
-        'Se requiere profesional_id del médico',
-        'Se requiere organizacion_id',
         'El DNI es requerido',
         'Fecha inválida',
         'La fecha no puede ser futura'
@@ -83,269 +103,169 @@ export class DoctorController {
     }
   }
 
+  // Obtener todas las notas del profesional
+  async getNotasByProfesionalId(req, res) {
+    try {
+      const { profesionalId } = req.params;
+
+      if (!profesionalId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID del profesional es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByProfesionalId(profesionalId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+  
+// Obtener notas de una consulta específica
+  async getNotasByConsultaId(req, res) {
+    try {
+      const { consultaId } = req.params;
+
+      if (!consultaId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la consulta es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByConsultaId(consultaId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      const status = error.message === 'Consulta no encontrada' ? 404 : 500;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async getMisPacientes(req, res) {
+    try {
+      const perfilProfesional = req.perfil_profesional;
+
+      if (!perfilProfesional?.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'No se encontró el perfil profesional del médico autenticado'
+        });
+      }
+
+      const pacientes = await this.doctorService.getPacientesByProfesional(perfilProfesional.id);
+
+      res.status(200).json({
+        success: true,
+        data: pacientes
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async getNotasByConsultaId(req, res) {
+    try {
+      const { consultaId } = req.params;
+
+      if (!consultaId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la consulta es requerido'
+        });
+      }
+
+      const notas = await this.doctorService.getNotasByConsultaId(consultaId);
+
+      res.status(200).json({
+        success: true,
+        data: notas
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async getHistorialClinico(req, res) {
+    try {
+      const { pacienteId } = req.params;
+
+      if (!pacienteId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID del paciente es requerido'
+        });
+      }
+
+      const historial = await this.doctorService.getHistorialClinico(pacienteId);
+
+      res.status(200).json({
+        success: true,
+        data: historial
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  async loginDoctor(req, res) {
+    try {
+      const { email, password } = req.body || {};
+
+      if (!email || !password) {
+        return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+      }
+
+      const result = await this.doctorService.loginDoctor(email, password);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      const status = error.message && error.message.toLowerCase().includes('credenciales') ? 401 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
+  // Registrar nuevo doctor
+  async register(req, res) {
+    try {
+      const doctorData = req.body || {};
+      const newDoctor = await this.doctorService.registerDoctor(doctorData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Doctor registrado exitosamente',
+        data: newDoctor
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+
+  // Otros métodos (comentados) permanecen sin cambios
 }
-
-  // // Registrar nuevo doctor
-  // async register(req, res) {
-  //   try {
-  //     const doctorData = req.body;
-  //     const newDoctor = await this.doctorService.registerDoctor(doctorData);
-
-  //     res.status(201).json({
-  //       success: true,
-  //       message: 'Doctor registrado exitosamente',
-  //       data: newDoctor
-  //     });
-  //   } catch (error) {
-  //     res.status(400).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Obtener perfil de doctor
-  // async getProfile(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const doctor = await this.doctorService.getDoctorProfile(doctorId);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctor
-  //     });
-  //   } catch (error) {
-  //     res.status(404).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Actualizar perfil de doctor
-  // async updateProfile(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const updateData = req.body;
-  //     const updatedDoctor = await this.doctorService.updateDoctorProfile(doctorId, updateData);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: 'Perfil actualizado exitosamente',
-  //       data: updatedDoctor
-  //     });
-  //   } catch (error) {
-  //     res.status(400).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Obtener todos los doctores
-  // async getAll(req, res) {
-  //   try {
-  //     const doctors = await this.doctorService.getAllDoctors();
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctors
-  //     });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Obtener doctores disponibles
-  // async getAvailable(req, res) {
-  //   try {
-  //     const doctors = await this.doctorService.getAvailableDoctors();
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctors
-  //     });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Buscar doctores por especialidad
-  // async searchBySpecialty(req, res) {
-  //   try {
-  //     const specialty = req.query.specialty;
-
-  //     if (!specialty) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: 'La especialidad es requerida'
-  //       });
-  //     }
-
-  //     const doctors = await this.doctorService.searchDoctorsBySpecialty(specialty);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctors
-  //     });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Buscar doctores por ciudad
-  // async searchByCity(req, res) {
-  //   try {
-  //     const city = req.query.city;
-
-  //     if (!city) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: 'La ciudad es requerida'
-  //       });
-  //     }
-
-  //     const doctors = await this.doctorService.searchDoctorsByCity(city);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctors
-  //     });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Buscar doctores por especialidad y ciudad
-  // async searchBySpecialtyAndCity(req, res) {
-  //   try {
-  //     const { specialty, city } = req.query;
-
-  //     if (!specialty || !city) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: 'La especialidad y la ciudad son requeridas'
-  //       });
-  //     }
-
-  //     const doctors = await this.doctorService.searchDoctorsBySpecialtyAndCity(specialty, city);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: doctors
-  //     });
-  //   } catch (error) {
-  //     res.status(500).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Agregar disponibilidad
-  // async addAvailableSlot(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const slotData = req.body;
-  //     const updatedDoctor = await this.doctorService.addAvailableSlot(doctorId, slotData);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: 'Disponibilidad agregada',
-  //       data: updatedDoctor
-  //     });
-  //   } catch (error) {
-  //     res.status(400).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Agregar calificación
-  // async addQualification(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const qualificationData = req.body;
-  //     const updatedDoctor = await this.doctorService.addQualification(doctorId, qualificationData);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: 'Calificación agregada',
-  //       data: updatedDoctor
-  //     });
-  //   } catch (error) {
-  //     res.status(400).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Verificar doctor
-  // async verify(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const result = await this.doctorService.verifyDoctor(doctorId);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: result.message,
-  //       data: result.doctor
-  //     });
-  //   } catch (error) {
-  //     res.status(404).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Desactivar perfil de doctor
-  // async deactivate(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const result = await this.doctorService.deactivateDoctor(doctorId);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       message: result.message
-  //     });
-  //   } catch (error) {
-  //     res.status(404).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-
-  // // Obtener disponibilidad de doctor
-  // async getAvailability(req, res) {
-  //   try {
-  //     const doctorId = req.params.id;
-  //     const availability = await this.doctorService.getDoctorAvailability(doctorId);
-
-  //     res.status(200).json({
-  //       success: true,
-  //       data: availability
-  //     });
-  //   } catch (error) {
-  //     res.status(404).json({
-  //       success: false,
-  //       message: error.message
-  //     });
-  //   }
-  // }
-

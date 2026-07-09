@@ -1,23 +1,85 @@
 // Servicio de Pacientes
 // Contiene la lógica de negocio para pacientes
 
-import { validatePatientData, validatePatientUpdate } from '../helpers/validations-helper.js';
+import { validatePatientData, validatePatientUpdate, validateEstudioData } from '../helpers/validations-helper.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export class PatientService {
   constructor(patientRepository) {
     this.patientRepository = patientRepository;
   }
 
-  // Obtener estudios / imágenes del paciente
+  // Obtener estudios del paciente (listado)
   async getPatientEstudios(patientId) {
     const estudios = await this.patientRepository.getEstudios(patientId);
     return estudios;
   }
 
+  // Obtener detalle de un estudio específico del paciente
+  async getPatientEstudioById(estudioId, patientId) {
+    const estudio = await this.patientRepository.getEstudioById(estudioId, patientId);
+    if (!estudio) {
+      throw new Error('Estudio no encontrado');
+    }  
+    return estudio;
+  }
+
+  async uploadPatientEstudio(patientId, estudioData) {
+    const validation = validateEstudioData(estudioData);
+    if (!validation.isValid) {
+      throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
+    }
+
+    const createdEstudio = await this.patientRepository.createEstudio(patientId, estudioData);
+    return createdEstudio;
+  }
+
   // Obtener todos los pacientes
   async getAllPatients() {
     const patients = await this.patientRepository.findAll();
-    return patients.map(p => p.getPublicData());
+    return patients.map(p => ({
+      id: p.id,
+      email: p.email,
+      nombre: p.nombre,
+      apellido: p.apellido,
+      es_medico: p.es_medico,
+      created_at: p.created_at
+    }));
+  }
+
+
+  async loginPatient(email, password, esMedico){
+    if (!email || !password) {
+      throw new Error('Email y contraseña son requeridos');
+    }
+
+    const user = await this.patientRepository.loginPatient(email);
+    if (!user) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash || '');
+    if (!match) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET no configurado en el entorno');
+    }
+
+    const token = jwt.sign({ id: user.id, es_medico: user.es_medico }, jwtSecret, { expiresIn: process.env.JWT_EXPIRATION || '1h' });
+
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      es_medico: user.es_medico
+    };
+
+    return { user: publicUser, token };
   }
 
 
@@ -35,8 +97,22 @@ export class PatientService {
       throw new Error('El email ya está registrado');
     }
 
+    // Hashear contraseña antes de crear
+    const passwordHash = await bcrypt.hash(patientData.password, 10);
+
+    const createPayload = {
+      email: patientData.email,
+      password_hash: passwordHash,
+      nombre: patientData.firstName || patientData.nombre,
+      apellido: patientData.lastName || patientData.apellido,
+      dni: patientData.dni || null,
+      dateOfBirth: patientData.dateOfBirth || patientData.fecha_nacimiento || null,
+      phoneNumber: patientData.phoneNumber || patientData.telefono || null,
+      gender: patientData.gender || patientData.identidad_genero || null
+    };
+
     // Crear paciente
-    const patient = await this.patientRepository.create(patientData);
+    const patient = await this.patientRepository.create(createPayload);
     return patient.getPublicData();
   }
 

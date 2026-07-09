@@ -8,36 +8,38 @@ export class DoctorRepository {
 
   async getPacienteByDni(dni) {
     const { data, error } = await this.db
-      .from('perfil_paciente')
-      .select('id, dni, edad, identidad_genero, telefono, usuario (nombre, apellido, email)')
+      .from('perfiles_paciente')
+      .select('id, dni, fecha_nacimiento, identidad_genero, telefono, obra_social, cobertura_estado, usuarios (nombre, apellido, email)')
       .eq('dni', dni)
-      .is('usuario.deleted_at', null)
+      .is('usuarios.deleted_at', null)
       .maybeSingle();
-  
+
     if (error) {
       throw error;
     }
-  
+
     if (!data) {
       return null;
     }
-  
+
     return {
       paciente_id: data.id,
       dni: data.dni,
-      edad: data.edad,
+      fecha_nacimiento: data.fecha_nacimiento,
       identidad_genero: data.identidad_genero,
       telefono: data.telefono,
-      nombre: data.usuario?.nombre || null,
-      apellido: data.usuario?.apellido || null,
-      email: data.usuario?.email || null
+      obra_social: data.obra_social || null,
+      cobertura_estado: data.cobertura_estado || 'sin_informacion',
+      nombre: data.usuarios?.nombre || null,
+      apellido: data.usuarios?.apellido || null,
+      email: data.usuarios?.email || null
     };
   }
 
   // Crear consulta
   async crearConsulta(consultaData) {
-    const { data, error } = await this.db
-      .from('consulta')
+    const { data: created, error } = await this.db
+      .from('consultas')
       .insert(consultaData)
       .select()
       .maybeSingle();
@@ -46,9 +48,381 @@ export class DoctorRepository {
       throw error;
     }
 
-    return data;
+    return created;
   }
+
+  // Obtener notas de una consulta específica
+  async getNotasByConsultaId(consultaId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select('id, notas')
+      .eq('id', consultaId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || !data.notas) {
+      return [];
+    }
+
+    return [{ consulta_id: data.id, nota: data.notas }];
+  }
+
+  // Obtener todas las notas del profesional
+  async getNotasByProfesionalId(profesionalId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select('id, fecha, paciente_id, profesional_id, notas')
+      .eq('profesional_id', profesionalId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return (data || [])
+      .filter(row => row.notas != null)
+      .map(row => ({
+        consulta_id: row.id,
+        nota: row.notas,
+        fecha: row.fecha,
+        paciente_id: row.paciente_id,
+        profesional_id: row.profesional_id
+      }));
+  }
+
+  async getPacientesByProfesional(profesionalId) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select(`
+        paciente_id,
+        fecha,
+        paciente:paciente_id (
+          id,
+          dni,
+          fecha_nacimiento,
+          telefono,
+          identidad_genero,
+          obra_social,
+          cobertura_estado,
+          usuario:usuario_id (
+            nombre,
+            apellido,
+            email
+          )
+        )
+      `)
+      .eq('profesional_id', profesionalId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Deduplicar: un registro por paciente con la consulta más reciente
+    const seen = new Set();
+    const pacientes = [];
+    for (const row of (data || [])) {
+      if (!seen.has(row.paciente_id)) {
+        seen.add(row.paciente_id);
+        const p = row.paciente;
+        if (p) {
+          pacientes.push({
+            paciente_id: p.id,
+            dni: p.dni,
+            fecha_nacimiento: p.fecha_nacimiento,
+            telefono: p.telefono,
+            identidad_genero: p.identidad_genero,
+            obra_social: p.obra_social || null,
+            cobertura_estado: p.cobertura_estado || 'sin_informacion',
+            nombre: p.usuario?.nombre || null,
+            apellido: p.usuario?.apellido || null,
+            email: p.usuario?.email || null,
+            ultima_consulta: row.fecha
+          });
+        }
+      }
+    }
+
+    return pacientes;
+  }
+
+  async getHistorialClinico(pacienteId) {
+    const { data: paciente, error: pacienteError } = await this.db
+      .from('perfiles_paciente')
+      .select(`
+        id,
+        dni,
+        fecha_nacimiento,
+        identidad_genero,
+        telefono,
+        obra_social,
+        cobertura_estado,
+        profile_picture,
+        tipo_sangre:tipo_sangre_id (nombre),
+        usuario:usuario_id (nombre, apellido, email)
+      `)
+      .eq('id', pacienteId)
+      .maybeSingle();
+
+    if (pacienteError) {
+      throw pacienteError;
+    }
+
+    const { data: consultas, error: consultasError } = await this.db
+      .from('consultas')
+      .select(`
+        id,
+        fecha,
+        diagnostico,
+        notas,
+        solicitud_estudio,
+        solicitud_receta,
+        solicitud_citaprox,
+        profesional:profesional_id (
+          id,
+          matricula,
+          especialidad_medica,
+          usuario:usuario_id (
+            nombre,
+            apellido
+          )
+        ),
+        organizacion:organizacion_id (
+          nombre
+        )
+      `)
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (consultasError) {
+      throw consultasError;
+    }
+
+    const consultaIds = (consultas || []).map(c => c.id);
+
+    const { data: prescripciones, error: prescripcionesError } = consultaIds.length
+      ? await this.db
+        .from('prescripciones')
+        .select('id, consulta_id, medicamento, indicaciones, activa')
+        .in('consulta_id', consultaIds)
+      : { data: [], error: null };
+
+    if (prescripcionesError) {
+      throw prescripcionesError;
+    }
+
+    const { data: estudios, error: estudiosError } = await this.db
+      .from('estudios')
+      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (estudiosError) {
+      throw estudiosError;
+    }
+
+    const { data: alergias, error: alergiasError } = await this.db
+      .from('alergias')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (alergiasError) {
+      throw alergiasError;
+    }
+
+    const { data: condicionesCronicas, error: condicionesError } = await this.db
+      .from('condiciones_cronicas')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (condicionesError) {
+      throw condicionesError;
+    }
+
+    const estudiosNormalizados = (estudios || []).map(row => {
+      if (row.tipo_estudio) {
+        const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
+        return { ...row, tipo_estudio: label };
+      }
+      return row;
+    });
+
+    const consultasConDetalle = (consultas || []).map(consulta => ({
+      ...consulta,
+      prescripciones: (prescripciones || []).filter(p => p.consulta_id === consulta.id),
+      adjuntos: estudiosNormalizados
+        .filter(e => e.consulta_id === consulta.id)
+        .map(({ id, nombre_archivo, url_archivo }) => ({ id, nombre_archivo, url_archivo }))
+    }));
+
+    return {
+      paciente: paciente
+        ? {
+          paciente_id: paciente.id,
+          dni: paciente.dni,
+          fecha_nacimiento: paciente.fecha_nacimiento,
+          identidad_genero: paciente.identidad_genero,
+          telefono: paciente.telefono,
+          obra_social: paciente.obra_social || null,
+          cobertura_estado: paciente.cobertura_estado || 'sin_informacion',
+          foto_perfil: paciente.profile_picture || null,
+          grupo_sanguineo: paciente.tipo_sangre?.nombre || null,
+          nombre: paciente.usuario?.nombre || null,
+          apellido: paciente.usuario?.apellido || null,
+          email: paciente.usuario?.email || null
+        }
+        : null,
+      alergias: alergias || [],
+      condicionesCronicas: condicionesCronicas || [],
+      consultas: consultasConDetalle,
+      estudios: estudiosNormalizados
+    };
+  }
+
+async loginDoctor(email, password)
+    {
+      const { data, error } = await this.db
+        .from('usuarios')
+        .select('id, email, password_hash, es_medico, nombre, apellido, perfiles_profesional (id, organizacion_id, matricula, especialidad_medica)')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        throw new Error(`Error al iniciar sesión: ${error.message}`);
+      }
+
+      if (!data) {
+        return null;
+      }
+
+      const perfilProfesional = Array.isArray(data.perfiles_profesional)
+        ? data.perfiles_profesional[0] || null
+        : data.perfiles_profesional || null;
+
+      return { ...data, perfil_profesional: perfilProfesional };
+    }
+
+  async findByEmail(email) {
+    const normalized = (email || '').toString().trim().toLowerCase();
+    if (!normalized) return null;
+
+    // Use case-insensitive match to avoid issues with casing/whitespace.
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, nombre, apellido, es_medico, created_at')
+      .ilike('email', normalized)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando usuario por email: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async findByLicenseNumber(licenseNumber) {
+    const { data, error } = await this.db
+      .from('perfiles_profesional')
+      .select('matricula, usuario_id, usuario:usuario_id (id, email, nombre, apellido)')
+      .eq('matricula', licenseNumber)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error buscando matrícula: ${error.message}`);
+    }
+
+    return data || null;
+  }
+
+  async create(doctorData) {
+    const {
+      email,
+      password_hash,
+      nombre,
+      apellido,
+      matricula,
+      especialidad_medica,
+      organizacion_id = null
+    } = doctorData;
+
+    const { data: userData, error: userError } = await this.db
+      .from('usuarios')
+      .insert({
+        email,
+        password_hash,
+        nombre,
+        apellido,
+        es_medico: true
+      })
+      .select('id, email, nombre, apellido, es_medico, created_at')
+      .single();
+
+    if (userError) {
+      throw new Error(`Error al crear usuario doctor: ${userError.message}`);
+    }
+
+    const { data: perfilData, error: perfilError } = await this.db
+      .from('perfiles_profesional')
+      .insert({
+        usuario_id: userData.id,
+        organizacion_id,
+        matricula,
+        especialidad_medica
+      })
+      .select('id, usuario_id, organizacion_id, matricula, especialidad_medica, created_at')
+      .single();
+
+    if (perfilError) {
+      throw new Error(`Error al crear perfil de doctor: ${perfilError.message}`);
+    }
+
+    return {
+      id: userData.id,
+      email: userData.email,
+      nombre: userData.nombre,
+      apellido: userData.apellido,
+      es_medico: userData.es_medico,
+      created_at: userData.created_at,
+      perfil: perfilData,
+      password_hash: password_hash,
+      getPublicData() {
+        const { password_hash, ...rest } = this;
+        return rest;
+      }
+    };
+  }
+
+  async organizationExists(organizacionId) {
+    if (!organizacionId) return false;
+    const { data, error } = await this.db
+      .from('organizaciones')
+      .select('id')
+      .eq('id', organizacionId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error verificando organización: ${error.message}`);
+    }
+
+    return !!data;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
 }
+
 
   
 //   async create(doctorData) {

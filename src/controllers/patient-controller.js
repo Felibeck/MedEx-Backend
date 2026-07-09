@@ -6,17 +6,46 @@ export class PatientController {
     this.patientService = patientService;
   }
 
- // Obtener estudios / imágenes del paciente
+ // Obtener estudios del paciente (listado)
 async getEstudios(req, res) {
   try {
     const patientId = req.params.id;
     const estudios = await this.patientService.getPatientEstudios(patientId);
     res.status(200).json({ success: true, data: estudios });
   } catch (error) {
-    console.error('Error completo en controller:', error); // ← agregá esto
+    console.error('Error completo en controller:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+  // Obtener detalle de un estudio específico del paciente
+  async getEstudioById(req, res) {
+    try {
+      const { id: patientId, estudioId } = req.params;
+      const estudio = await this.patientService.getPatientEstudioById(estudioId, patientId);
+      res.status(200).json({ success: true, data: estudio });
+    } catch (error) {
+      const status = error.message === 'Estudio no encontrado' ? 404 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
+  async uploadEstudio(req, res) {
+    try {
+      const patientId = req.params.id;
+      const estudioData = req.body;
+      const createdEstudio = await this.patientService.uploadPatientEstudio(patientId, estudioData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Estudio cargado correctamente',
+        data: createdEstudio
+      });
+    } catch (error) {
+      const status = error.message && error.message.startsWith('Errores de validación') ? 400 : error.message === 'Paciente no encontrado' ? 404 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
 
   // Obtener todos los pacientes
   async getAll(req, res) {
@@ -32,6 +61,23 @@ async getEstudios(req, res) {
         success: false,
         message: error.message
       });
+    }
+  }
+
+
+  async loginPatient(req, res) {
+    try {
+      const { email, password } = req.body || {};
+
+      if (!email || !password) {
+        return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
+      }
+
+      const result = await this.patientService.loginPatient(email, password);
+      res.status(200).json({ success: true, data: result });
+    } catch (error) {
+      const status = error.message && error.message.toLowerCase().includes('credenciales') ? 401 : 500;
+      res.status(status).json({ success: false, message: error.message });
     }
   }
 

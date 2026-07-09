@@ -1,7 +1,9 @@
 // Servicio de Doctores
 // Contiene la lógica de negocio para doctores
 
-import { validateDoctorData, validateDoctorUpdate } from '../helpers/validations-helper.js';
+import { validateDoctorData } from '../helpers/validations-helper.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export class DoctorService {
   constructor(doctorRepository) {
@@ -14,25 +16,15 @@ export class DoctorService {
       profesional_id,
       organizacion_id,
       fecha,
-      ant = null,
-      ago = null,
-      ahf = null,
-      mx = null,
-      eco = null,
-      ef = null,
-      otros = null
+      solicitud_estudio = false,
+      solicitud_receta = false,
+      solicitud_citaprox = false,
+      notas = null,
+
     } = consultaData || {};
 
     if (!dni) {
       throw new Error('Se requiere dni del paciente');
-    }
-
-    if (!profesional_id) {
-      throw new Error('Se requiere profesional_id del médico');
-    }
-
-    if (!organizacion_id) {
-      throw new Error('Se requiere organizacion_id');
     }
 
     const paciente = await this.buscarPacientePorDni(dni);
@@ -49,30 +41,90 @@ export class DoctorService {
     }
 
     const insertPayload = {
-      profesional_id,
-      organizacion_id,
+      profesional_id: profesional_id,
+      organizacion_id: organizacion_id,
       paciente_id: paciente.paciente_id,
       fecha: fechaObj.toISOString(),
-      ant,
-      ago,
-      ahf,
-      mx,
-      eco,
-      ef,
-      otros
+      solicitud_estudio,
+      solicitud_receta,
+      solicitud_citaprox
     };
 
-    return await this.doctorRepository.crearConsulta(insertPayload);
+    // Normalizar `notas`: cada consulta ahora tiene un único campo `notas` de tipo string.
+    let nota = null;
+    if (notas) {
+      if (typeof notas === 'string') {
+        nota = notas.trim();
+      } else if (Array.isArray(notas) && notas.length) {
+        const first = notas.find(n => {
+          if (typeof n === 'string') return n.trim().length > 0;
+          return n && typeof n === 'object' && String(n.nota || '').trim().length > 0;
+        });
+        if (typeof first === 'string') {
+          nota = first.trim();
+        } else if (first && typeof first === 'object' && first.nota) {
+          nota = String(first.nota).trim();
+        }
+      } else if (typeof notas === 'object' && notas.nota) {
+        nota = String(notas.nota).trim();
+      }
+
+      if (nota && nota.length === 0) {
+        nota = null;
+      }
+    }
+
+    const payload = { ...insertPayload };
+    if (nota !== null) payload.notas = nota;
+
+    return await this.doctorRepository.crearConsulta(payload);
+  }
+
+  async getNotasByConsultaId(consultaId) {
+    if (!consultaId) {
+      throw new Error('El ID de la consulta es requerido');
+    }
+
+    return await this.doctorRepository.getNotasByConsultaId(consultaId);
+  }
+
+  async getNotasByProfesionalId(profesionalId) {
+    if (!profesionalId) {
+      throw new Error('El ID del profesional es requerido');
+    }
+
+    return await this.doctorRepository.getNotasByProfesionalId(profesionalId);
+  }
+
+  async getPacientesByProfesional(profesionalId) {
+    if (!profesionalId) {
+      throw new Error('El ID del profesional es requerido');
+    }
+
+    return await this.doctorRepository.getPacientesByProfesional(profesionalId);
+  }
+
+  async getHistorialClinico(pacienteId) {
+    if (!pacienteId) {
+      throw new Error('El ID del paciente es requerido');
+    }
+
+    return await this.doctorRepository.getHistorialClinico(pacienteId);
   }
 
   async buscarPacientePorDni(dni) {
-    const dniNormalizado = String(dni).trim();
+    const raw = String(dni || '').trim();
+    const dniNormalizado = raw.replace(/\D/g, ''); // conservar solo dígitos
 
     if (!dniNormalizado) {
       throw new Error('El DNI es requerido');
     }
 
-    const paciente = await this.doctorRepository.getPacienteByDni(dniNormalizado);
+    let paciente = await this.doctorRepository.getPacienteByDni(dniNormalizado);
+
+    if (!paciente && raw !== dniNormalizado) {
+      paciente = await this.doctorRepository.getPacienteByDni(raw);
+    }
 
     if (!paciente) {
       throw new Error('Paciente no encontrado');
@@ -81,164 +133,91 @@ export class DoctorService {
     return paciente;
   }
 
+  async loginDoctor(email, password) {
+    if (!email || !password) {
+      throw new Error('Email y contraseña son requeridos');
+    }
+
+    const user = await this.doctorRepository.loginDoctor(email);
+    if (!user) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash || '');
+    if (!match) {
+      throw new Error('Credenciales inválidas');
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET no configurado en el entorno');
+    }
+
+    const token = jwt.sign({ id: user.id, es_medico: user.es_medico }, jwtSecret, { expiresIn: process.env.JWT_EXPIRATION || '1h' });
+
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      apellido: user.apellido,
+      es_medico: user.es_medico,
+      perfil_profesional_id: user.perfil_profesional?.id || null,
+      organizacion_id: user.perfil_profesional?.organizacion_id || null,
+      matricula: user.perfil_profesional?.matricula || null,
+      especialidad_medica: user.perfil_profesional?.especialidad_medica || null
+    };
+
+    return { user: publicUser, token };
+  }
+
+  // Registrar nuevo doctor
+  async registerDoctor(doctorData) {
+    // Validar datos
+    const validation = validateDoctorData(doctorData);
+    if (!validation.isValid) {
+      throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
+    }
+
+    // Verificar si el email ya existe
+    const existingDoctor = await this.doctorRepository.findByEmail(doctorData.email);
+    if (existingDoctor) {
+      throw new Error('El email ya está registrado');
+    }
+
+    // Verificar si la matrícula ya existe
+    const matricula = doctorData.licenseNumber || doctorData.matricula;
+    if (matricula) {
+      const existingByMatricula = await this.doctorRepository.findByLicenseNumber(matricula);
+      if (existingByMatricula) {
+        throw new Error('La matrícula ya está registrada');
+      }
+    }
+
+    // Verificar existencia de la organización referenciada para evitar violación FK
+    const organizacionId = doctorData.organizacion_id;
+    if (organizacionId) {
+      const exists = await this.doctorRepository.organizationExists(organizacionId);
+      if (!exists) {
+        throw new Error('Organización no encontrada (organizacion_id inválido)');
+      }
+    }
+
+    // Hashear contraseña
+    const passwordHash = await bcrypt.hash(doctorData.password, 10);
+
+    const createPayload = {
+      email: doctorData.email,
+      password_hash: passwordHash,
+      nombre: doctorData.firstName || doctorData.nombre,
+      apellido: doctorData.lastName || doctorData.apellido,
+      matricula: doctorData.licenseNumber || doctorData.matricula,
+      especialidad_medica: doctorData.specialty || doctorData.especialidad || null,
+      organizacion_id: doctorData.organizacion_id
+    };
+
+    const doctor = await this.doctorRepository.create(createPayload);
+    return doctor.getPublicData();
+  }
+
+  // (otros métodos comentados siguen)
 }
-
-
-
-
-
-  
-  // // Registrar nuevo doctor
-  // async registerDoctor(doctorData) {
-  //   // Validar datos
-  //   const validation = validateDoctorData(doctorData);
-  //   if (!validation.isValid) {
-  //     throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
-  //   }
-
-  //   // Verificar si el email ya existe
-  //   const existingDoctor = await this.doctorRepository.findByEmail(doctorData.email);
-  //   if (existingDoctor) {
-  //     throw new Error('El email ya está registrado');
-  //   }
-
-  //   // Verificar si el número de licencia ya existe
-  //   const doctorWithLicense = await this.doctorRepository.findByLicenseNumber(doctorData.licenseNumber);
-  //   if (doctorWithLicense) {
-  //     throw new Error('El número de licencia ya está registrado');
-  //   }
-
-  //   // Crear doctor
-  //   const doctor = await this.doctorRepository.create(doctorData);
-  //   return doctor.getPublicData();
-  // }
-
-  // // Obtener perfil de doctor
-  // async getDoctorProfile(doctorId) {
-  //   const doctor = await this.doctorRepository.findById(doctorId);
-  //   if (!doctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-  //   return doctor.getPublicData();
-  // }
-
-  // // Actualizar perfil de doctor
-  // async updateDoctorProfile(doctorId, updateData) {
-  //   const validation = validateDoctorUpdate(updateData);
-  //   if (!validation.isValid) {
-  //     throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
-  //   }
-
-  //   // Verificar si el nuevo email ya existe (si se intenta cambiar)
-  //   if (updateData.email) {
-  //     const existingDoctor = await this.doctorRepository.findByEmail(updateData.email);
-  //     if (existingDoctor && existingDoctor.id !== doctorId) {
-  //       throw new Error('El email ya está registrado');
-  //     }
-  //   }
-
-  //   const updatedDoctor = await this.doctorRepository.update(doctorId, updateData);
-  //   if (!updatedDoctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return updatedDoctor.getPublicData();
-  // }
-
-  // // Obtener todos los doctores
-  // async getAllDoctors() {
-  //   const doctors = await this.doctorRepository.findAll();
-  //   return doctors.map(d => d.getPublicData());
-  // }
-
-  // // Obtener doctores disponibles (verificados y activos)
-  // async getAvailableDoctors() {
-  //   const doctors = await this.doctorRepository.findAvailable();
-  //   return doctors.map(d => d.getPublicData());
-  // }
-
-  // // Buscar doctores por especialidad
-  // async searchDoctorsBySpecialty(specialty) {
-  //   const doctors = await this.doctorRepository.findBySpecialty(specialty);
-  //   return doctors.map(d => d.getPublicData());
-  // }
-
-  // // Buscar doctores por ciudad
-  // async searchDoctorsByCity(city) {
-  //   const doctors = await this.doctorRepository.findByCity(city);
-  //   return doctors.map(d => d.getPublicData());
-  // }
-
-  // // Buscar doctores por especialidad y ciudad
-  // async searchDoctorsBySpecialtyAndCity(specialty, city) {
-  //   const doctors = await this.doctorRepository.findBySpecialtyAndCity(specialty, city);
-  //   return doctors.map(d => d.getPublicData());
-  // }
-
-  // // Agregar disponibilidad
-  // async addAvailableSlot(doctorId, slotData) {
-  //   if (!slotData.date || !slotData.startTime || !slotData.endTime) {
-  //     throw new Error('Fecha, hora de inicio y fin son requeridas');
-  //   }
-
-  //   const updatedDoctor = await this.doctorRepository.addAvailableSlot(doctorId, slotData);
-  //   if (!updatedDoctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return updatedDoctor.getPublicData();
-  // }
-
-  // // Agregar calificación/certificación
-  // async addQualification(doctorId, qualificationData) {
-  //   if (!qualificationData.name) {
-  //     throw new Error('El nombre de la calificación es requerido');
-  //   }
-
-  //   const updatedDoctor = await this.doctorRepository.addQualification(doctorId, qualificationData);
-  //   if (!updatedDoctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return updatedDoctor.getPublicData();
-  // }
-
-  // // Verificar doctor (aprobación de admin)
-  // async verifyDoctor(doctorId) {
-  //   const updatedDoctor = await this.doctorRepository.verify(doctorId);
-  //   if (!updatedDoctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return {
-  //     message: 'Doctor verificado correctamente',
-  //     doctor: updatedDoctor.getPublicData()
-  //   };
-  // }
-
-  // // Desactivar perfil de doctor
-  // async deactivateDoctor(doctorId) {
-  //   const updatedDoctor = await this.doctorRepository.delete(doctorId);
-  //   if (!updatedDoctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return { message: 'Doctor desactivado correctamente' };
-  // }
-
-  // // Obtener información de disponibilidad
-  // async getDoctorAvailability(doctorId) {
-  //   const doctor = await this.doctorRepository.findById(doctorId);
-  //   if (!doctor) {
-  //     throw new Error('Doctor no encontrado');
-  //   }
-
-  //   return {
-  //     doctorId: doctor.id,
-  //     doctorName: doctor.getFullName(),
-  //     availableSlots: doctor.availableSlots
-  //   };
-  // }
-
- 
-

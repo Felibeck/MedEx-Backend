@@ -45,16 +45,10 @@ export const validatePatientData = (patientData) => {
     errors.push('La fecha de nacimiento es requerida');
   }
 
-  if (!['M', 'F', 'O'].includes(patientData.gender)) {
-    errors.push('El género debe ser M, F u O');
-  }
-
-  if (!patientData.address || patientData.address.trim() === '') {
-    errors.push('La dirección es requerida');
-  }
-
-  if (!patientData.city || patientData.city.trim() === '') {
-    errors.push('La ciudad es requerida');
+  const allowedGenders = ['femenino', 'masculino', 'no_binario', 'otro', 'prefiero_no_decir'];
+  const genderVal = (patientData.gender || '').toString().toLowerCase();
+  if (!allowedGenders.includes(genderVal)) {
+    errors.push('El género debe ser uno de: femenino, masculino, no_binario, otro, prefiero_no_decir');
   }
 
   return {
@@ -103,6 +97,10 @@ export const validateDoctorData = (doctorData) => {
     errors.push('El hospital es requerido');
   }
 
+  if (!doctorData.organizacion_id) {
+    errors.push('La organización (organizacion_id) es requerida');
+  }
+
   if (!doctorData.address || doctorData.address.trim() === '') {
     errors.push('La dirección es requerida');
   }
@@ -133,8 +131,41 @@ export const validatePatientUpdate = (updateData) => {
     errors.push('El número de teléfono no es válido');
   }
 
-  if (updateData.gender && !['M', 'F', 'O'].includes(updateData.gender)) {
-    errors.push('El género debe ser M, F u O');
+  if (updateData.gender) {
+    const allowedGenders = ['femenino', 'masculino', 'no_binario', 'otro', 'prefiero_no_decir'];
+    const genderVal = updateData.gender.toString().toLowerCase();
+    if (!allowedGenders.includes(genderVal)) {
+      errors.push('El género debe ser uno de: femenino, masculino, no_binario, otro, prefiero_no_decir');
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
+export const validateEstudioData = (estudioData) => {
+  const errors = [];
+
+  if (!estudioData.nombre_archivo || estudioData.nombre_archivo.toString().trim() === '') {
+    errors.push('El nombre del archivo es requerido');
+  }
+
+  if (!estudioData.url_archivo || estudioData.url_archivo.toString().trim() === '') {
+    errors.push('La URL del archivo es requerida');
+  }
+
+  if (!estudioData.fecha) {
+    errors.push('La fecha del estudio es requerida');
+  }
+
+  if (!estudioData.institucion || estudioData.institucion.toString().trim() === '') {
+    errors.push('La institución es requerida');
+  }
+
+  if (!estudioData.tipo_estudio_id) {
+    errors.push('El tipo de estudio es requerido');
   }
 
   return {
