@@ -181,6 +181,7 @@ export class DoctorRepository {
         solicitud_estudio,
         solicitud_receta,
         solicitud_citaprox,
+        tipo_estudio:tipo_estudio_id(*),
         profesional:profesional_id (
           id,
           matricula,
@@ -250,13 +251,20 @@ export class DoctorRepository {
       return row;
     });
 
-    const consultasConDetalle = (consultas || []).map(consulta => ({
-      ...consulta,
-      prescripciones: (prescripciones || []).filter(p => p.consulta_id === consulta.id),
-      adjuntos: estudiosNormalizados
-        .filter(e => e.consulta_id === consulta.id)
-        .map(({ id, nombre_archivo, url_archivo }) => ({ id, nombre_archivo, url_archivo }))
-    }));
+    const consultasConDetalle = (consultas || []).map(consulta => {
+      const tipoEstudioLabel = consulta.tipo_estudio
+        ? (consulta.tipo_estudio.nombre ?? consulta.tipo_estudio.tipo ?? consulta.tipo_estudio.label ?? null)
+        : null;
+
+      return {
+        ...consulta,
+        tipo_estudio: tipoEstudioLabel,
+        prescripciones: (prescripciones || []).filter(p => p.consulta_id === consulta.id),
+        adjuntos: estudiosNormalizados
+          .filter(e => e.consulta_id === consulta.id)
+          .map(({ id, nombre_archivo, url_archivo }) => ({ id, nombre_archivo, url_archivo }))
+      };
+    });
 
     return {
       paciente: paciente
@@ -405,6 +413,21 @@ async loginDoctor(email, password)
 
     if (error) {
       throw new Error(`Error verificando organización: ${error.message}`);
+    }
+
+    return !!data;
+  }
+
+  async tipoEstudioExists(tipoEstudioId) {
+    if (!tipoEstudioId) return false;
+    const { data, error } = await this.db
+      .from('tipos_estudio')
+      .select('id')
+      .eq('id', tipoEstudioId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error verificando tipo de estudio: ${error.message}`);
     }
 
     return !!data;

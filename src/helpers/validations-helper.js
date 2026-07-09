@@ -174,6 +174,23 @@ export const validateEstudioData = (estudioData) => {
   };
 };
 
+export const validateConsultaTipoEstudio = (solicitudEstudio, tipoEstudioId) => {
+  const errors = [];
+
+  if (solicitudEstudio && !tipoEstudioId) {
+    errors.push('tipo_estudio_id es requerido cuando se solicita un estudio');
+  }
+
+  if (!solicitudEstudio && tipoEstudioId != null) {
+    errors.push('tipo_estudio_id no debe informarse si no se solicita un estudio');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 export const validateDoctorUpdate = (updateData) => {
   const errors = [];
 

@@ -5,12 +5,16 @@ import express from 'express';
 import supabase from './configs/database.js';
 import { PatientRepository } from './repositories/patient-repository.js';
 import { DoctorRepository } from './repositories/doctor-repository.js';
+import { CatalogoRepository } from './repositories/catalogo-repository.js';
 import { PatientService } from './services/patient-service.js';
 import { DoctorService } from './services/doctor-service.js';
+import { CatalogoService } from './services/catalogo-service.js';
 import { PatientController } from './controllers/patient-controller.js';
 import { DoctorController } from './controllers/doctor-controller.js';
-import { createPatientRoutes } from './modules/patient-routes.js';
-import { createDoctorRoutes } from './modules/doctor-routes.js';
+import { CatalogoController } from './controllers/catalogo-controller.js';
+import { createPatientRoutes } from './routes/patient-routes.js';
+import { createDoctorRoutes } from './routes/doctor-routes.js';
+import { createCatalogoRoutes } from './routes/catalogo-routes.js';
 const app = express();
 
 // Middlewares
@@ -34,18 +38,22 @@ app.use((req, res, next) => {
 // Inicializar repositorios
 const patientRepository = new PatientRepository(supabase);
 const doctorRepository = new DoctorRepository(supabase);
+const catalogoRepository = new CatalogoRepository(supabase);
 
 // Inicializar servicios
 const patientService = new PatientService(patientRepository);
 const doctorService = new DoctorService(doctorRepository);
+const catalogoService = new CatalogoService(catalogoRepository);
 
 // Inicializar controladores
 const patientController = new PatientController(patientService);
 const doctorController = new DoctorController(doctorService);
+const catalogoController = new CatalogoController(catalogoService);
 
 // Registrar rutas
 app.use('/api/patients', createPatientRoutes(patientController));
 app.use('/api/doctors', createDoctorRoutes(doctorController));
+app.use('/api/catalogos', createCatalogoRoutes(catalogoController));
 
 // Ruta de prueba
 app.get('/health', (req, res) => {

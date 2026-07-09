@@ -79,7 +79,10 @@ export class DoctorController {
         'Se requiere dni del paciente',
         'El DNI es requerido',
         'Fecha inválida',
-        'La fecha no puede ser futura'
+        'La fecha no puede ser futura',
+        'tipo_estudio_id es requerido cuando se solicita un estudio',
+        'tipo_estudio_id no debe informarse si no se solicita un estudio',
+        'Tipo de estudio no encontrado (tipo_estudio_id inválido)'
       ]);
 
       const status = error.message === 'Paciente no encontrado'
