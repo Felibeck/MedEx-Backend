@@ -21,14 +21,6 @@ export class PatientService {
   }
 
 
-
-
-
-  
-
-
-
-
   // Registrar nuevo paciente
   async registerPatient(patientData) {
     // Validar datos
