@@ -1,7 +1,7 @@
 // Servicio de Doctores
 // Contiene la lógica de negocio para doctores
 
-import { validateDoctorData, validateConsultaTipoEstudio } from '../helpers/validations-helper.js';
+import { validateDoctorData } from '../helpers/validations-helper.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -20,7 +20,6 @@ export class DoctorService {
       solicitud_receta = false,
       solicitud_citaprox = false,
       notas = null,
-      tipo_estudio_id = null,
 
     } = consultaData || {};
 
@@ -41,18 +40,6 @@ export class DoctorService {
       throw new Error('La fecha no puede ser futura');
     }
 
-    const tipoEstudioValidation = validateConsultaTipoEstudio(solicitud_estudio, tipo_estudio_id);
-    if (!tipoEstudioValidation.isValid) {
-      throw new Error(tipoEstudioValidation.errors[0]);
-    }
-
-    if (tipo_estudio_id) {
-      const tipoEstudioExists = await this.doctorRepository.tipoEstudioExists(tipo_estudio_id);
-      if (!tipoEstudioExists) {
-        throw new Error('Tipo de estudio no encontrado (tipo_estudio_id inválido)');
-      }
-    }
-
     const insertPayload = {
       profesional_id: profesional_id,
       organizacion_id: organizacion_id,
@@ -60,8 +47,7 @@ export class DoctorService {
       fecha: fechaObj.toISOString(),
       solicitud_estudio,
       solicitud_receta,
-      solicitud_citaprox,
-      tipo_estudio_id: tipo_estudio_id || null
+      solicitud_citaprox
     };
 
     // Normalizar `notas`: cada consulta ahora tiene un único campo `notas` de tipo string.
