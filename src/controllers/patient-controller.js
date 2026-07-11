@@ -102,6 +102,31 @@ async getEstudios(req, res) {
 
 
 
+  async getHistorialClinico(req, res) {
+    try {
+      const perfilPaciente = req.perfil_paciente;
+
+      if (!perfilPaciente?.id) {
+        return res.status(404).json({
+          success: false,
+          message: 'Perfil de paciente no encontrado para este usuario'
+        });
+      }
+
+      const historial = await this.patientService.getHistorialClinico(perfilPaciente.id);
+
+      res.status(200).json({
+        success: true,
+        data: historial
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   // Registrar nuevo paciente
   async register(req, res) {
     try {

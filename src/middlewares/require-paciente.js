@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { loginPatient } from '../../api/patientAuth'
 import supabase from '../configs/database.js';
 
 export const requirePaciente = async (req, res, next) => {

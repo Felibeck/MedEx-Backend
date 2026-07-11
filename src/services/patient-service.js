@@ -116,6 +116,14 @@ export class PatientService {
     return patient.getPublicData();
   }
 
+  async getHistorialClinico(pacienteId) {
+    if (!pacienteId) {
+      throw new Error('El ID del paciente es requerido');
+    }
+
+    return await this.patientRepository.getHistorialClinico(pacienteId);
+  }
+
   // Obtener perfil de paciente
   async getPatientProfile(patientId) {
     const patient = await this.patientRepository.findById(patientId);
