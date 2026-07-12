@@ -410,6 +410,43 @@ async loginDoctor(email, password)
     return !!data;
   }
 
+  // Sube el PDF al bucket de Supabase Storage y guarda el registro en la tabla recetas
+  async subirReceta(consultaId, fileBuffer, originalName, titulo) {
+    // Construir path único dentro del bucket: recetas/<consultaId>/<timestamp>_<nombre>
+    const timestamp = Date.now();
+    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `recetas/${consultaId}/${timestamp}_${safeName}`;
+
+    // Subir al bucket "estudios"
+    const { error: uploadError } = await this.db.storage
+      .from('estudios')
+      .upload(filePath, fileBuffer, {
+        contentType: 'application/pdf',
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Error al subir receta al storage: ${uploadError.message}`);
+    }
+
+    // Insertar registro en tabla recetas
+    const { data, error: insertError } = await this.db
+      .from('recetas')
+      .insert({
+        consulta_id: consultaId,
+        titulo: titulo || safeName,
+        pathFile: filePath
+      })
+      .select('id, consulta_id, titulo, pathFile, created_at')
+      .single();
+
+    if (insertError) {
+      throw new Error(`Error al guardar registro de receta: ${insertError.message}`);
+    }
+
+    return data;
+  }
+
 
 
 

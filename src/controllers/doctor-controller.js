@@ -68,7 +68,7 @@ export class DoctorController {
         ...body,
         profesional_id: perfilProfesional.id,
         organizacion_id: perfilProfesional.organizacion_id
-      });
+      }, req.file || null);
 
       res.status(201).json({
         success: true,

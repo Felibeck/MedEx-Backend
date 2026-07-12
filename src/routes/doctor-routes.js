@@ -4,7 +4,7 @@
 import express from 'express';
 import { requireMedico } from '../middlewares/require-medico.js';
 
-export const createDoctorRoutes = (doctorController) => {
+export const createDoctorRoutes = (doctorController, upload) => {
   const router = express.Router();
 
   router.get('/pacientes/buscar', requireMedico, (req, res) => doctorController.buscarPacientePorDni(req, res));
@@ -15,8 +15,8 @@ export const createDoctorRoutes = (doctorController) => {
   // Historial clínico de un paciente (por pacienteId de perfiles_paciente)
   router.get('/pacientes/:pacienteId/historial', requireMedico, (req, res) => doctorController.getHistorialClinico(req, res));
 
-  // Registrar nueva consulta
-  router.post('/consultas', requireMedico, (req, res) => doctorController.crearConsulta(req, res));
+  // Registrar nueva consulta (acepta multipart/form-data para receta PDF opcional)
+  router.post('/consultas', requireMedico, upload.single('receta_pdf'), (req, res) => doctorController.crearConsulta(req, res));
 
   // Obtener todas las notas del profesional
   router.get('/:profesionalId/notas', requireMedico, (req, res) => doctorController.getNotasByProfesionalId(req, res));

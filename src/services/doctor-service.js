@@ -10,7 +10,7 @@ export class DoctorService {
     this.doctorRepository = doctorRepository;
   }
 
-  async createConsulta(consultaData) {
+  async createConsulta(consultaData, archivoReceta) {
     const {
       dni,
       profesional_id,
@@ -20,7 +20,8 @@ export class DoctorService {
       solicitud_receta = false,
       solicitud_citaprox = false,
       notas = null,
-
+      receta_titulo = null,
+      tipo_consulta = null,
     } = consultaData || {};
 
     if (!dni) {
@@ -45,6 +46,7 @@ export class DoctorService {
       organizacion_id: organizacion_id,
       paciente_id: paciente.paciente_id,
       fecha: fechaObj.toISOString(),
+      tipo_consulta,
       solicitud_estudio,
       solicitud_receta,
       solicitud_citaprox
@@ -77,7 +79,20 @@ export class DoctorService {
     const payload = { ...insertPayload };
     if (nota !== null) payload.notas = nota;
 
-    return await this.doctorRepository.crearConsulta(payload);
+    const consulta = await this.doctorRepository.crearConsulta(payload);
+
+    // Si viene un PDF de receta, subirlo al bucket y registrarlo en la tabla recetas
+    if (archivoReceta && archivoReceta.buffer) {
+      const titulo = (receta_titulo || '').toString().trim() || archivoReceta.originalname;
+      await this.doctorRepository.subirReceta(
+        consulta.id,
+        archivoReceta.buffer,
+        archivoReceta.originalname,
+        titulo
+      );
+    }
+
+    return consulta;
   }
 
   async getNotasByConsultaId(consultaId) {

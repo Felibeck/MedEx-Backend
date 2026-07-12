@@ -2,6 +2,7 @@
 // Configuración central de Express y rutas
 import 'dotenv/config';
 import express from 'express';
+import multer from 'multer';
 import supabase from './configs/database.js';
 import { PatientRepository } from './repositories/patient-repository.js';
 import { DoctorRepository } from './repositories/doctor-repository.js';
@@ -50,9 +51,12 @@ const patientController = new PatientController(patientService);
 const doctorController = new DoctorController(doctorService);
 const catalogoController = new CatalogoController(catalogoService);
 
+// Multer en memoria — solo para el endpoint de consultas (acepta multipart/form-data)
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Registrar rutas
 app.use('/api/patients', createPatientRoutes(patientController));
-app.use('/api/doctors', createDoctorRoutes(doctorController));
+app.use('/api/doctors', createDoctorRoutes(doctorController, upload));
 app.use('/api/catalogos', createCatalogoRoutes(catalogoController));
 
 // Ruta de prueba
