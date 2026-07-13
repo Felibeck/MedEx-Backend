@@ -145,6 +145,25 @@ export const validatePatientUpdate = (updateData) => {
   };
 };
 
+// Extensiones aceptadas como fallback cuando el navegador no manda un mimetype reconocible
+// (ej: .jfif suele llegar con mimetype vacío o application/octet-stream)
+const ALLOWED_ESTUDIO_EXTENSIONS = /\.(jpg|jpeg|png|jfif|webp|heic|pdf)$/i;
+const IMAGE_ESTUDIO_EXTENSIONS = /\.(jpg|jpeg|png|jfif|webp|heic)$/i;
+const GENERIC_MIME_TYPES = new Set(['', 'application/octet-stream']);
+
+export const isValidEstudioFile = (mimetype, filename) => {
+  const isValidMimeType = /^image\/|^application\/pdf$/.test(mimetype || '');
+  const hasValidExtension = ALLOWED_ESTUDIO_EXTENSIONS.test(filename || '');
+  return isValidMimeType || hasValidExtension;
+};
+
+// Determina si un archivo de estudio ya aceptado debe tratarse como imagen (para fotos[]),
+// incluyendo el fallback de mimetype vacío/genérico con extensión de imagen conocida (ej: .jfif)
+export const isImageEstudioFile = (mimetype, filename) => {
+  if ((mimetype || '').startsWith('image/')) return true;
+  return GENERIC_MIME_TYPES.has(mimetype || '') && IMAGE_ESTUDIO_EXTENSIONS.test(filename || '');
+};
+
 export const validateEstudioData = (estudioData) => {
   const errors = [];
 

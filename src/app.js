@@ -13,6 +13,7 @@ import { CatalogoService } from './services/catalogo-service.js';
 import { PatientController } from './controllers/patient-controller.js';
 import { DoctorController } from './controllers/doctor-controller.js';
 import { CatalogoController } from './controllers/catalogo-controller.js';
+import { isValidEstudioFile } from './helpers/validations-helper.js';
 import { createPatientRoutes } from './routes/patient-routes.js';
 import { createDoctorRoutes } from './routes/doctor-routes.js';
 import { createCatalogoRoutes } from './routes/catalogo-routes.js';
@@ -59,8 +60,7 @@ const uploadEstudio = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const isValidType = /^image\/|^application\/pdf$/.test(file.mimetype);
-    if (!isValidType) {
+    if (!isValidEstudioFile(file.mimetype, file.originalname)) {
       return cb(new Error('El archivo debe ser una imagen o un PDF'));
     }
     cb(null, true);

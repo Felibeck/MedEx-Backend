@@ -1,7 +1,7 @@
 // Servicio de Pacientes
 // Contiene la lógica de negocio para pacientes
 
-import { validatePatientData, validatePatientUpdate, validateEstudioData } from '../helpers/validations-helper.js';
+import { validatePatientData, validatePatientUpdate, validateEstudioData, isValidEstudioFile, isImageEstudioFile } from '../helpers/validations-helper.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -41,8 +41,7 @@ export class PatientService {
       throw new Error('El archivo es requerido');
     }
 
-    const allowedMimeTypes = /^image\/|^application\/pdf$/;
-    if (!allowedMimeTypes.test(archivo.mimetype)) {
+    if (!isValidEstudioFile(archivo.mimetype, archivo.originalname)) {
       throw new Error('El archivo debe ser una imagen o un PDF');
     }
 
@@ -66,7 +65,7 @@ export class PatientService {
       nombre_archivo: archivo.originalname,
       url_archivo: urlArchivo,
       descripcion: notas || null,
-      fotos: archivo.mimetype.startsWith('image/') ? [urlArchivo] : []
+      fotos: isImageEstudioFile(archivo.mimetype, archivo.originalname) ? [urlArchivo] : []
     };
 
     const validation = validateEstudioData(estudioData);

@@ -3,6 +3,8 @@
 import { randomUUID } from 'crypto';
 
 const ESTUDIOS_SIGNED_URL_EXPIRATION = 60 * 60 * 24 * 365; // 1 año
+const JFIF_EXTENSION = /\.jfif$/i;
+const GENERIC_MIME_TYPES = new Set(['', 'application/octet-stream']);
 
 export class PatientRepository {
   constructor(database) {
@@ -18,10 +20,16 @@ export class PatientRepository {
 
     const filePath = `${resolvedPacienteId}/${randomUUID()}-${fileName}`;
 
+    // Los .jfif son JPEGs por especificación, pero suelen llegar con mimetype vacío o genérico
+    // (application/octet-stream) desde el navegador — forzamos el content-type real del formato
+    const resolvedContentType = (JFIF_EXTENSION.test(fileName) && GENERIC_MIME_TYPES.has(mimeType))
+      ? 'image/jpeg'
+      : mimeType;
+
     const { error: uploadError } = await this.db.storage
       .from('estudios')
       .upload(filePath, fileBuffer, {
-        contentType: mimeType,
+        contentType: resolvedContentType,
         upsert: false
       });
 
