@@ -162,6 +162,12 @@ export class DoctorRepository {
         cobertura_estado,
         profile_picture,
         tipo_sangre:tipo_sangre_id (nombre),
+        antecedentes_quirurgicos,
+        heredofamiliares,
+        menarca_edad,
+        formula_obstetrica,
+        ultimo_pap_fecha,
+        ultimo_pap_resultado,
         usuario:usuario_id (nombre, apellido, email)
       `)
       .eq('id', pacienteId)
@@ -181,6 +187,9 @@ export class DoctorRepository {
         solicitud_estudio,
         solicitud_receta,
         solicitud_citaprox,
+        presion_arterial,
+        peso_kg,
+        talla_m,
         profesional:profesional_id (
           id,
           matricula,
@@ -242,6 +251,31 @@ export class DoctorRepository {
       throw condicionesError;
     }
 
+    const { data: antecedentesPatologicos, error: antecedentesError } = await this.db
+      .from('antecedentes_patologicos')
+      .select('id, nombre, anio, estado')
+      .eq('paciente_id', pacienteId);
+
+    if (antecedentesError) {
+      throw antecedentesError;
+    }
+
+    const consultaConExamen = (consultas || []).find(
+      c => c.presion_arterial != null || c.peso_kg != null || c.talla_m != null
+    );
+
+    const examenFisico = consultaConExamen
+      ? {
+        presionArterial: consultaConExamen.presion_arterial ?? null,
+        pesoKg: consultaConExamen.peso_kg ?? null,
+        tallaM: consultaConExamen.talla_m ?? null,
+        imc: (consultaConExamen.peso_kg != null && consultaConExamen.talla_m)
+          ? Math.round((consultaConExamen.peso_kg / (consultaConExamen.talla_m ** 2)) * 10) / 10
+          : null,
+        fecha: consultaConExamen.fecha
+      }
+      : null;
+
     const estudiosNormalizados = (estudios || []).map(row => {
       if (row.tipo_estudio) {
         const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
@@ -270,6 +304,14 @@ export class DoctorRepository {
           cobertura_estado: paciente.cobertura_estado || 'sin_informacion',
           foto_perfil: paciente.profile_picture || null,
           grupo_sanguineo: paciente.tipo_sangre?.nombre || null,
+          antecedentesQuirurgicos: paciente.antecedentes_quirurgicos || null,
+          heredofamiliares: paciente.heredofamiliares || null,
+          ginecoObstetrico: {
+            menarcaEdad: paciente.menarca_edad ?? null,
+            formulaObstetrica: paciente.formula_obstetrica || null,
+            ultimoPapFecha: paciente.ultimo_pap_fecha || null,
+            ultimoPapResultado: paciente.ultimo_pap_resultado || null
+          },
           nombre: paciente.usuario?.nombre || null,
           apellido: paciente.usuario?.apellido || null,
           email: paciente.usuario?.email || null
@@ -277,6 +319,8 @@ export class DoctorRepository {
         : null,
       alergias: alergias || [],
       condicionesCronicas: condicionesCronicas || [],
+      antecedentesPatologicos: antecedentesPatologicos || [],
+      examenFisico,
       consultas: consultasConDetalle,
       estudios: estudiosNormalizados
     };
