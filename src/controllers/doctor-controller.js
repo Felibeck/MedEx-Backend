@@ -209,25 +209,26 @@ export class DoctorController {
   async getHistorialClinico(req, res) {
     try {
       const { pacienteId } = req.params;
-
       if (!pacienteId) {
-        return res.status(400).json({
-          success: false,
-          message: 'El ID del paciente es requerido'
-        });
+        return res.status(400).json({ success: false, message: 'El ID del paciente es requerido' });
       }
-
       const historial = await this.doctorService.getHistorialClinico(pacienteId);
-
-      res.status(200).json({
-        success: true,
-        data: historial
-      });
+      res.status(200).json({ success: true, data: historial });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message
-      });
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async guardarHistorial(req, res) {
+    try {
+      const { pacienteId } = req.params;
+      if (!pacienteId) {
+        return res.status(400).json({ success: false, message: 'El ID del paciente es requerido' });
+      }
+      const historial = await this.doctorService.guardarHistorial(pacienteId, req.body || {});
+      res.status(200).json({ success: true, data: historial });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 

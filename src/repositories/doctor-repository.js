@@ -149,6 +149,51 @@ export class DoctorRepository {
     return pacientes;
   }
 
+  async guardarHistorial(pacienteId, historialData) {
+    const payload = {
+      paciente_id: pacienteId,
+      ant: historialData.ant ?? null,
+      ago: historialData.ago ?? null,
+      ahf: historialData.ahf ?? null,
+      mx: historialData.mx ?? null,
+      eco: historialData.eco ?? null,
+      ef: historialData.ef ?? null,
+      otros: historialData.otros ?? null
+    };
+
+    const { data: existing, error: existingError } = await this.db
+      .from('historial')
+      .select('id')
+      .eq('paciente_id', pacienteId)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    if (existing?.id) {
+      const { data, error } = await this.db
+        .from('historial')
+        .update(payload)
+        .eq('paciente_id', pacienteId)
+        .select('id, paciente_id, ant, ago, ahf, mx, eco, ef, otros, created_at')
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await this.db
+      .from('historial')
+      .insert(payload)
+      .select('id, paciente_id, ant, ago, ahf, mx, eco, ef, otros, created_at')
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  }
+
   async getHistorialClinico(pacienteId) {
     // Datos del paciente
     const { data: paciente, error: pacienteError } = await this.db
@@ -222,7 +267,7 @@ export class DoctorRepository {
     // Estudios
     const { data: estudios, error: estudiosError } = await this.db
       .from('estudios')
-      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipos_estudio!left(*), fecha, institucion, descripcion')
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false });
 
@@ -235,6 +280,33 @@ export class DoctorRepository {
       }
       return row;
     });
+
+    const historialBase = {
+      id: null,
+      paciente_id: pacienteId,
+      ant: '',
+      ago: '',
+      ahf: '',
+      mx: '',
+      eco: '',
+      ef: '',
+      otros: '',
+      created_at: null
+    };
+
+    const historialNormalizado = historial
+      ? {
+          ...historialBase,
+          ...historial,
+          ant: historial.ant ?? '',
+          ago: historial.ago ?? '',
+          ahf: historial.ahf ?? '',
+          mx: historial.mx ?? '',
+          eco: historial.eco ?? '',
+          ef: historial.ef ?? '',
+          otros: historial.otros ?? ''
+        }
+      : historialBase;
 
     return {
       paciente: paciente
@@ -254,18 +326,7 @@ export class DoctorRepository {
       condicionesCronicas: condicionesCronicas || [],
       consultas: consultas || [],
       estudios: estudiosNormalizados,
-      historial: historial || {
-        id: null,
-        paciente_id: pacienteId,
-        ant: null,
-        ago: null,
-        ahf: null,
-        mx: null,
-        eco: null,
-        ef: null,
-        otros: null,
-        created_at: null
-      }
+      historial: historialNormalizado
     };
   }
 

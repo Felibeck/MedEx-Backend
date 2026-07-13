@@ -26,7 +26,7 @@ export class PatientRepository {
 
     const { data, error } = await this.db
       .from('estudios')
-      .select('id, tipo_estudio:tipo_estudio_id(*), fecha, institucion')
+      .select('id, tipo_estudio:tipos_estudio!left(*), fecha, institucion')
       .eq('paciente_id', resolvedPacienteId)
       .order('fecha', { ascending: false });
 
@@ -63,7 +63,7 @@ export class PatientRepository {
         url_archivo,
         descripcion,
         subido_at,
-        tipo_estudio:tipo_estudio_id(*),
+        tipo_estudio:tipos_estudio!left(*),
         medico:medico_id (
           id,
           matricula,
@@ -157,8 +157,31 @@ export class PatientRepository {
       .eq('paciente_id', pacienteId)
       .maybeSingle();
 
-    if (historialError) {
-      throw historialError;
+    if (consultasError) {
+      throw consultasError;
+    }
+
+    const consultaIds = (consultas || []).map(c => c.id);
+
+    const { data: prescripciones, error: prescripcionesError } = consultaIds.length
+      ? await this.db
+        .from('prescripciones')
+        .select('id, consulta_id, medicamento, indicaciones, activa')
+        .in('consulta_id', consultaIds)
+      : { data: [], error: null };
+
+    if (prescripcionesError) {
+      throw prescripcionesError;
+    }
+
+    const { data: estudios, error: estudiosError } = await this.db
+      .from('estudios')
+      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false });
+
+    if (estudiosError) {
+      throw estudiosError;
     }
 
     const { data: alergias, error: alergiasError } = await this.db
