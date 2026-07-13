@@ -498,9 +498,9 @@ async loginDoctor(email, password)
     const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const filePath = `recetas/${consultaId}/${timestamp}_${safeName}`;
 
-    // Subir al bucket "estudios"
+    // Subir al bucket "recetas"
     const { error: uploadError } = await this.db.storage
-      .from('estudios')
+      .from('recetas')
       .upload(filePath, fileBuffer, {
         contentType: 'application/pdf',
         upsert: false
