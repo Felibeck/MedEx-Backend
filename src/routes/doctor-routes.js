@@ -15,6 +15,9 @@ export const createDoctorRoutes = (doctorController, upload) => {
   // Historial clínico de un paciente (por pacienteId de perfiles_paciente)
   router.get('/pacientes/:pacienteId/historial', requireMedico, (req, res) => doctorController.getHistorialClinico(req, res));
 
+  // Guardar/actualizar historial clínico de un paciente
+  router.post('/pacientes/:pacienteId/historial', requireMedico, (req, res) => doctorController.guardarHistorial(req, res));
+
   // Registrar nueva consulta (acepta multipart/form-data para receta PDF opcional)
   router.post('/consultas', requireMedico, upload.single('receta_pdf'), (req, res) => doctorController.crearConsulta(req, res));
 

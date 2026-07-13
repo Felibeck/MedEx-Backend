@@ -149,6 +149,29 @@ export class DoctorRepository {
     return pacientes;
   }
 
+  async guardarHistorial(pacienteId, historialData) {
+    const payload = {
+      paciente_id: pacienteId,
+      ant: historialData.ant ?? null,
+      ago: historialData.ago ?? null,
+      ahf: historialData.ahf ?? null,
+      mx: historialData.mx ?? null,
+      eco: historialData.eco ?? null,
+      ef: historialData.ef ?? null,
+      otros: historialData.otros ?? null
+    };
+
+    const { data, error } = await this.db
+      .from('historial')
+      .upsert(payload, { onConflict: 'paciente_id' })
+      .select('id, paciente_id, ant, ago, ahf, mx, eco, ef, otros, created_at')
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  }
+
   async getHistorialClinico(pacienteId) {
     // Datos del paciente
     const { data: paciente, error: pacienteError } = await this.db
