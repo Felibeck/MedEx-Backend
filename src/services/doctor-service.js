@@ -120,11 +120,13 @@ export class DoctorService {
   }
 
   async getHistorialClinico(pacienteId) {
-    if (!pacienteId) {
-      throw new Error('El ID del paciente es requerido');
-    }
-
+    if (!pacienteId) throw new Error('El ID del paciente es requerido');
     return await this.doctorRepository.getHistorialClinico(pacienteId);
+  }
+
+  async guardarHistorial(pacienteId, historialData) {
+    if (!pacienteId) throw new Error('El ID del paciente es requerido');
+    return await this.doctorRepository.guardarHistorial(pacienteId, historialData);
   }
 
   async buscarPacientePorDni(dni) {
