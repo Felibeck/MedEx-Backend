@@ -127,6 +127,31 @@ async getEstudios(req, res) {
     }
   }
 
+  async getRecetas(req, res) {
+    try {
+      const perfilPaciente = req.perfil_paciente;
+
+      if (!perfilPaciente?.id) {
+        return res.status(404).json({
+          success: false,
+          message: 'Perfil de paciente no encontrado para este usuario'
+        });
+      }
+
+      const recetas = await this.patientService.getRecetas(perfilPaciente.id);
+
+      res.status(200).json({
+        success: true,
+        data: recetas
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   // Registrar nuevo paciente
   async register(req, res) {
     try {

@@ -130,6 +130,58 @@ export class PatientRepository {
     return data;
   }
 
+  async getRecetas(pacienteId) {
+    const resolvedPacienteId = await this.resolvePacienteId(pacienteId);
+
+    if (!resolvedPacienteId) {
+      return [];
+    }
+
+    const { data: recetas, error: recetasError } = await this.db
+      .from('recetas')
+      .select(`
+        id,
+        consulta_id,
+        titulo,
+        pathFile,
+        created_at,
+        consulta:consulta_id (
+          paciente_id
+        )
+      `)
+      .eq('consulta.paciente_id', resolvedPacienteId)
+      .order('created_at', { ascending: false });
+
+    if (recetasError) {
+      throw new Error(`Error al obtener recetas del paciente: ${recetasError.message}`);
+    }
+
+    const recetasConUrl = await Promise.all((recetas || []).map(async (receta) => {
+      let url = null;
+
+      if (receta.pathFile) {
+        const { data: signedData, error: signedError } = await this.db.storage
+          .from('estudios')
+          .createSignedUrl(receta.pathFile, 60 * 60);
+
+        if (!signedError && signedData?.signedUrl) {
+          url = signedData.signedUrl;
+        }
+      }
+
+      return {
+        id: receta.id,
+        consulta_id: receta.consulta_id,
+        titulo: receta.titulo || null,
+        pathFile: receta.pathFile || null,
+        created_at: receta.created_at || null,
+        url
+      };
+    }));
+
+    return recetasConUrl;
+  }
+
   async getHistorialClinico(pacienteId) {
     const { data: paciente, error: pacienteError } = await this.db
       .from('perfiles_paciente')
