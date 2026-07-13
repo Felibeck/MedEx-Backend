@@ -150,33 +150,51 @@ export class DoctorRepository {
   }
 
   async getHistorialClinico(pacienteId) {
+    // Datos del paciente
     const { data: paciente, error: pacienteError } = await this.db
       .from('perfiles_paciente')
       .select(`
         id,
         dni,
         fecha_nacimiento,
-        identidad_genero,
         telefono,
         obra_social,
         cobertura_estado,
         profile_picture,
         tipo_sangre:tipo_sangre_id (nombre),
-        antecedentes_quirurgicos,
-        heredofamiliares,
-        menarca_edad,
-        formula_obstetrica,
-        ultimo_pap_fecha,
-        ultimo_pap_resultado,
         usuario:usuario_id (nombre, apellido, email)
       `)
       .eq('id', pacienteId)
       .maybeSingle();
 
-    if (pacienteError) {
-      throw pacienteError;
-    }
+    if (pacienteError) throw pacienteError;
 
+    // Historial clínico
+    const { data: historial, error: historialError } = await this.db
+      .from('historial')
+      .select('id, paciente_id, ant, ago, ahf, mx, eco, ef, otros, created_at')
+      .eq('paciente_id', pacienteId)
+      .maybeSingle();
+
+    if (historialError) throw historialError;
+
+    // Alergias
+    const { data: alergias, error: alergiasError } = await this.db
+      .from('alergias')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (alergiasError) throw alergiasError;
+
+    // Condiciones crónicas
+    const { data: condicionesCronicas, error: condicionesError } = await this.db
+      .from('condiciones_cronicas')
+      .select('id, nombre')
+      .eq('paciente_id', pacienteId);
+
+    if (condicionesError) throw condicionesError;
+
+    // Consultas
     const { data: consultas, error: consultasError } = await this.db
       .from('consultas')
       .select(`
@@ -184,97 +202,31 @@ export class DoctorRepository {
         fecha,
         diagnostico,
         notas,
+        tipo_consulta,
         solicitud_estudio,
         solicitud_receta,
         solicitud_citaprox,
-        presion_arterial,
-        peso_kg,
-        talla_m,
         profesional:profesional_id (
           id,
           matricula,
           especialidad_medica,
-          usuario:usuario_id (
-            nombre,
-            apellido
-          )
+          usuario:usuario_id (nombre, apellido)
         ),
-        organizacion:organizacion_id (
-          nombre
-        )
+        organizacion:organizacion_id (nombre)
       `)
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false });
 
-    if (consultasError) {
-      throw consultasError;
-    }
+    if (consultasError) throw consultasError;
 
-    const consultaIds = (consultas || []).map(c => c.id);
-
-    const { data: prescripciones, error: prescripcionesError } = consultaIds.length
-      ? await this.db
-        .from('prescripciones')
-        .select('id, consulta_id, medicamento, indicaciones, activa')
-        .in('consulta_id', consultaIds)
-      : { data: [], error: null };
-
-    if (prescripcionesError) {
-      throw prescripcionesError;
-    }
-
+    // Estudios
     const { data: estudios, error: estudiosError } = await this.db
       .from('estudios')
       .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false });
 
-    if (estudiosError) {
-      throw estudiosError;
-    }
-
-    const { data: alergias, error: alergiasError } = await this.db
-      .from('alergias')
-      .select('id, nombre')
-      .eq('paciente_id', pacienteId);
-
-    if (alergiasError) {
-      throw alergiasError;
-    }
-
-    const { data: condicionesCronicas, error: condicionesError } = await this.db
-      .from('condiciones_cronicas')
-      .select('id, nombre')
-      .eq('paciente_id', pacienteId);
-
-    if (condicionesError) {
-      throw condicionesError;
-    }
-
-    const { data: antecedentesPatologicos, error: antecedentesError } = await this.db
-      .from('antecedentes_patologicos')
-      .select('id, nombre, anio, estado')
-      .eq('paciente_id', pacienteId);
-
-    if (antecedentesError) {
-      throw antecedentesError;
-    }
-
-    const consultaConExamen = (consultas || []).find(
-      c => c.presion_arterial != null || c.peso_kg != null || c.talla_m != null
-    );
-
-    const examenFisico = consultaConExamen
-      ? {
-        presionArterial: consultaConExamen.presion_arterial ?? null,
-        pesoKg: consultaConExamen.peso_kg ?? null,
-        tallaM: consultaConExamen.talla_m ?? null,
-        imc: (consultaConExamen.peso_kg != null && consultaConExamen.talla_m)
-          ? Math.round((consultaConExamen.peso_kg / (consultaConExamen.talla_m ** 2)) * 10) / 10
-          : null,
-        fecha: consultaConExamen.fecha
-      }
-      : null;
+    if (estudiosError) throw estudiosError;
 
     const estudiosNormalizados = (estudios || []).map(row => {
       if (row.tipo_estudio) {
@@ -284,45 +236,36 @@ export class DoctorRepository {
       return row;
     });
 
-    const consultasConDetalle = (consultas || []).map(consulta => ({
-      ...consulta,
-      prescripciones: (prescripciones || []).filter(p => p.consulta_id === consulta.id),
-      adjuntos: estudiosNormalizados
-        .filter(e => e.consulta_id === consulta.id)
-        .map(({ id, nombre_archivo, url_archivo }) => ({ id, nombre_archivo, url_archivo }))
-    }));
-
     return {
       paciente: paciente
         ? {
-          paciente_id: paciente.id,
-          dni: paciente.dni,
-          fecha_nacimiento: paciente.fecha_nacimiento,
-          identidad_genero: paciente.identidad_genero,
-          telefono: paciente.telefono,
-          obra_social: paciente.obra_social || null,
-          cobertura_estado: paciente.cobertura_estado || 'sin_informacion',
-          foto_perfil: paciente.profile_picture || null,
-          grupo_sanguineo: paciente.tipo_sangre?.nombre || null,
-          antecedentesQuirurgicos: paciente.antecedentes_quirurgicos || null,
-          heredofamiliares: paciente.heredofamiliares || null,
-          ginecoObstetrico: {
-            menarcaEdad: paciente.menarca_edad ?? null,
-            formulaObstetrica: paciente.formula_obstetrica || null,
-            ultimoPapFecha: paciente.ultimo_pap_fecha || null,
-            ultimoPapResultado: paciente.ultimo_pap_resultado || null
-          },
-          nombre: paciente.usuario?.nombre || null,
-          apellido: paciente.usuario?.apellido || null,
-          email: paciente.usuario?.email || null
-        }
+            paciente_id: paciente.id,
+            dni: paciente.dni,
+            nombre: paciente.usuario?.nombre || null,
+            apellido: paciente.usuario?.apellido || null,
+            fecha_nacimiento: paciente.fecha_nacimiento,
+            foto_perfil: paciente.profile_picture || null,
+            grupo_sanguineo: paciente.tipo_sangre?.nombre || null,
+            obra_social: paciente.obra_social || null,
+            cobertura_estado: paciente.cobertura_estado || 'sin_informacion'
+          }
         : null,
       alergias: alergias || [],
       condicionesCronicas: condicionesCronicas || [],
-      antecedentesPatologicos: antecedentesPatologicos || [],
-      examenFisico,
-      consultas: consultasConDetalle,
-      estudios: estudiosNormalizados
+      consultas: consultas || [],
+      estudios: estudiosNormalizados,
+      historial: historial || {
+        id: null,
+        paciente_id: pacienteId,
+        ant: null,
+        ago: null,
+        ahf: null,
+        mx: null,
+        eco: null,
+        ef: null,
+        otros: null,
+        created_at: null
+      }
     };
   }
 
