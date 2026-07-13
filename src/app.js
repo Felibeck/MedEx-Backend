@@ -54,8 +54,21 @@ const catalogoController = new CatalogoController(catalogoService);
 // Multer en memoria — solo para el endpoint de consultas (acepta multipart/form-data)
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Multer en memoria — para la subida de archivos de estudios del paciente (imagen o PDF, máx 10MB)
+const uploadEstudio = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const isValidType = /^image\/|^application\/pdf$/.test(file.mimetype);
+    if (!isValidType) {
+      return cb(new Error('El archivo debe ser una imagen o un PDF'));
+    }
+    cb(null, true);
+  }
+});
+
 // Registrar rutas
-app.use('/api/patients', createPatientRoutes(patientController));
+app.use('/api/patients', createPatientRoutes(patientController, uploadEstudio));
 app.use('/api/doctors', createDoctorRoutes(doctorController, upload));
 app.use('/api/catalogos', createCatalogoRoutes(catalogoController));
 

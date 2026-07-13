@@ -35,6 +35,48 @@ export class PatientService {
     return createdEstudio;
   }
 
+  // Subir estudio con archivo real (imagen o PDF) al bucket "estudios"
+  async uploadPatientEstudioConArchivo(patientId, { archivo, titulo, tipo_estudio_id, fecha, institucion, notas }) {
+    if (!archivo) {
+      throw new Error('El archivo es requerido');
+    }
+
+    const allowedMimeTypes = /^image\/|^application\/pdf$/;
+    if (!allowedMimeTypes.test(archivo.mimetype)) {
+      throw new Error('El archivo debe ser una imagen o un PDF');
+    }
+
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (archivo.size > maxSizeBytes) {
+      throw new Error('El archivo excede el tamaño máximo permitido de 10MB');
+    }
+
+    const urlArchivo = await this.patientRepository.uploadArchivoEstudio(
+      patientId,
+      archivo.buffer,
+      archivo.originalname,
+      archivo.mimetype
+    );
+
+    const estudioData = {
+      titulo,
+      tipo_estudio_id,
+      fecha,
+      institucion,
+      nombre_archivo: archivo.originalname,
+      url_archivo: urlArchivo,
+      descripcion: notas || null
+    };
+
+    const validation = validateEstudioData(estudioData);
+    if (!validation.isValid) {
+      throw new Error(`Errores de validación: ${validation.errors.join(', ')}`);
+    }
+
+    const createdEstudio = await this.patientRepository.createEstudio(patientId, estudioData);
+    return createdEstudio;
+  }
+
   // Obtener todos los pacientes
   async getAllPatients() {
     const patients = await this.patientRepository.findAll();

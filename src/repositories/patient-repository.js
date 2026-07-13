@@ -1,8 +1,44 @@
 // Repositorio de Pacientes
 // Gestión de datos de pacientes para la conexión con Supabase.
+import { randomUUID } from 'crypto';
+
+const ESTUDIOS_SIGNED_URL_EXPIRATION = 60 * 60 * 24 * 365; // 1 año
+
 export class PatientRepository {
   constructor(database) {
     this.db = database;
+  }
+
+  // Sube un archivo de estudio al bucket "estudios" y devuelve la URL de acceso
+  async uploadArchivoEstudio(pacienteId, fileBuffer, fileName, mimeType) {
+    const resolvedPacienteId = await this.resolvePacienteId(pacienteId);
+    if (!resolvedPacienteId) {
+      throw new Error('Paciente no encontrado');
+    }
+
+    const filePath = `${resolvedPacienteId}/${randomUUID()}-${fileName}`;
+
+    const { error: uploadError } = await this.db.storage
+      .from('estudios')
+      .upload(filePath, fileBuffer, {
+        contentType: mimeType,
+        upsert: false
+      });
+
+    if (uploadError) {
+      throw new Error(`Error al subir el archivo al storage: ${uploadError.message}`);
+    }
+
+    // El bucket "estudios" es privado, así que se genera una URL firmada de larga duración
+    const { data: signedData, error: signedError } = await this.db.storage
+      .from('estudios')
+      .createSignedUrl(filePath, ESTUDIOS_SIGNED_URL_EXPIRATION);
+
+    if (signedError) {
+      throw new Error(`Error al generar la URL del archivo: ${signedError.message}`);
+    }
+
+    return signedData.signedUrl;
   }
 
   async resolvePacienteId(patientId) {
@@ -103,6 +139,7 @@ export class PatientRepository {
     const payload = {
       paciente_id: resolvedPacienteId,
       consulta_id: estudioData.consulta_id || null,
+      titulo: estudioData.titulo || null,
       nombre_archivo: estudioData.nombre_archivo,
       url_archivo: estudioData.url_archivo,
       descripcion: estudioData.descripcion || null,

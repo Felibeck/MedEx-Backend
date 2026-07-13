@@ -47,6 +47,45 @@ async getEstudios(req, res) {
     }
   }
 
+  async uploadEstudioConArchivo(req, res) {
+    try {
+      const patientId = req.params.id;
+      const { titulo, tipo_estudio_id, fecha, institucion, notas } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'El archivo es requerido' });
+      }
+
+      const createdEstudio = await this.patientService.uploadPatientEstudioConArchivo(patientId, {
+        archivo: req.file,
+        titulo,
+        tipo_estudio_id,
+        fecha,
+        institucion,
+        notas
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Estudio cargado correctamente',
+        data: createdEstudio
+      });
+    } catch (error) {
+      const status = error.message && error.message.startsWith('Errores de validación') ? 400
+        : error.message === 'El archivo es requerido' ? 400
+        : error.message === 'El archivo debe ser una imagen o un PDF' ? 400
+        : error.message === 'El archivo excede el tamaño máximo permitido de 10MB' ? 400
+        : error.message === 'Paciente no encontrado' ? 404
+        : 500;
+
+      if (status === 500) {
+        console.error('uploadEstudioConArchivo error:', error);
+      }
+
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
+
   // Obtener todos los pacientes
   async getAll(req, res) {
     try {

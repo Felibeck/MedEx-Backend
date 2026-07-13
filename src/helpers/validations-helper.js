@@ -148,6 +148,10 @@ export const validatePatientUpdate = (updateData) => {
 export const validateEstudioData = (estudioData) => {
   const errors = [];
 
+  if (!estudioData.titulo || estudioData.titulo.toString().trim() === '') {
+    errors.push('El título del estudio es requerido');
+  }
+
   if (!estudioData.nombre_archivo || estudioData.nombre_archivo.toString().trim() === '') {
     errors.push('El nombre del archivo es requerido');
   }

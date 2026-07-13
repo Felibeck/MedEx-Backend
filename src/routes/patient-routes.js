@@ -4,7 +4,7 @@
   import express from 'express';
   import { requirePaciente } from '../middlewares/require-paciente.js';
 
-  export const createPatientRoutes = (patientController) => {
+  export const createPatientRoutes = (patientController, upload) => {
     const router = express.Router();
 
     // Historial clínico del paciente autenticado (debe ir antes de '/:id')
@@ -19,6 +19,19 @@
     // Obtener detalle de un estudio específico
     router.get('/:id/estudios/:estudioId', (req, res) => patientController.getEstudioById(req, res));
     router.post('/:id/estudios', (req, res) => patientController.uploadEstudio(req, res));
+
+    // Subir estudio con archivo real (imagen o PDF) al bucket "estudios"
+    router.post('/:id/estudios/upload', (req, res, next) => {
+      upload.single('archivo')(req, res, (err) => {
+        if (err) {
+          const message = err.code === 'LIMIT_FILE_SIZE'
+            ? 'El archivo excede el tamaño máximo permitido de 10MB'
+            : err.message;
+          return res.status(400).json({ success: false, message });
+        }
+        next();
+      });
+    }, (req, res) => patientController.uploadEstudioConArchivo(req, res));
 
     // Obtener todos los pacientes
     router.get('/', (req, res) => patientController.getAll(req, res));
