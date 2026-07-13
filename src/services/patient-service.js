@@ -65,7 +65,8 @@ export class PatientService {
       institucion,
       nombre_archivo: archivo.originalname,
       url_archivo: urlArchivo,
-      descripcion: notas || null
+      descripcion: notas || null,
+      fotos: archivo.mimetype.startsWith('image/') ? [urlArchivo] : []
     };
 
     const validation = validateEstudioData(estudioData);

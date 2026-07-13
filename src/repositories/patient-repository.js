@@ -62,7 +62,7 @@ export class PatientRepository {
 
     const { data, error } = await this.db
       .from('estudios')
-      .select('id, tipo_estudio:tipos_estudio!left(*), fecha, institucion')
+      .select('id, titulo, tipo_estudio:tipos_estudio!left(*), fecha, institucion')
       .eq('paciente_id', resolvedPacienteId)
       .order('fecha', { ascending: false });
 
@@ -89,6 +89,7 @@ export class PatientRepository {
       .from('estudios')
       .select(`
         id,
+        titulo,
         fecha,
         institucion,
         fotos,
