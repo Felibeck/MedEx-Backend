@@ -156,6 +156,32 @@ export class DoctorController {
     }
   }
 
+  async updateConsulta(req, res) {
+    try {
+      const { consultaId } = req.params;
+
+      if (!consultaId) {
+        return res.status(400).json({
+          success: false,
+          message: 'El ID de la consulta es requerido'
+        });
+      }
+
+      const consulta = await this.doctorService.updateConsulta(consultaId, req.body || {});
+
+      res.status(200).json({
+        success: true,
+        data: consulta
+      });
+    } catch (error) {
+      const status = error.message === 'Consulta no encontrada' ? 404 : 500;
+      res.status(status).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   async getMisPacientes(req, res) {
     try {
       const perfilProfesional = req.perfil_profesional;

@@ -27,8 +27,8 @@ export const createDoctorRoutes = (doctorController, upload) => {
   // Obtener notas de una consulta específica
   router.get('/consultas/:consultaId/notas', requireMedico, (req, res) => doctorController.getNotasByConsultaId(req, res));
 
-
-
+  // Editar nota y tipo de consulta de una consulta específica
+  router.patch('/consultas/:consultaId', requireMedico, (req, res) => doctorController.updateConsulta(req, res));
 
 
   // Los siguientes endpoints están pendientes de implementación

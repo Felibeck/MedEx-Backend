@@ -103,6 +103,52 @@ export class DoctorService {
     return await this.doctorRepository.getNotasByConsultaId(consultaId);
   }
 
+  async updateConsulta(consultaId, consultaData = {}) {
+    if (!consultaId) {
+      throw new Error('El ID de la consulta es requerido');
+    }
+
+    if (!consultaData || typeof consultaData !== 'object') {
+      throw new Error('Datos de consulta inválidos');
+    }
+
+    const payload = {};
+
+    if (Object.prototype.hasOwnProperty.call(consultaData, 'notas')) {
+      const notas = consultaData.notas;
+
+      if (notas === null || notas === '') {
+        payload.notas = null;
+      } else if (typeof notas === 'string') {
+        const normalized = notas.trim();
+        payload.notas = normalized || null;
+      } else if (Array.isArray(notas) && notas.length) {
+        const first = notas.find(n => {
+          if (typeof n === 'string') return n.trim().length > 0;
+          return n && typeof n === 'object' && String(n.nota || '').trim().length > 0;
+        });
+
+        if (typeof first === 'string') {
+          payload.notas = first.trim() || null;
+        } else if (first && typeof first === 'object' && first.nota) {
+          payload.notas = String(first.nota).trim() || null;
+        } else {
+          payload.notas = null;
+        }
+      } else if (typeof notas === 'object' && notas.nota) {
+        payload.notas = String(notas.nota).trim() || null;
+      } else {
+        payload.notas = null;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(consultaData, 'tipo_consulta')) {
+      payload.tipo_consulta = consultaData.tipo_consulta ?? null;
+    }
+
+    return await this.doctorRepository.updateConsulta(consultaId, payload);
+  }
+
   async getNotasByProfesionalId(profesionalId) {
     if (!profesionalId) {
       throw new Error('El ID del profesional es requerido');

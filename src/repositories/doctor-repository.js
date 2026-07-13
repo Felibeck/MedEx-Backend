@@ -93,6 +93,39 @@ export class DoctorRepository {
       }));
   }
 
+  async updateConsulta(consultaId, consultaData = {}) {
+    const payload = {};
+
+    if (Object.prototype.hasOwnProperty.call(consultaData, 'notas')) {
+      payload.notas = consultaData.notas ?? null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(consultaData, 'tipo_consulta')) {
+      payload.tipo_consulta = consultaData.tipo_consulta ?? null;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      return null;
+    }
+
+    const { data, error } = await this.db
+      .from('consultas')
+      .update(payload)
+      .eq('id', consultaId)
+      .select('id, paciente_id, profesional_id, organizacion_id, fecha, notas, tipo_consulta, solicitud_estudio, solicitud_receta, solicitud_citaprox')
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error('Consulta no encontrada');
+    }
+
+    return data;
+  }
+
   async getPacientesByProfesional(profesionalId) {
     const { data, error } = await this.db
       .from('consultas')
