@@ -157,31 +157,8 @@ export class PatientRepository {
       .eq('paciente_id', pacienteId)
       .maybeSingle();
 
-    if (consultasError) {
-      throw consultasError;
-    }
-
-    const consultaIds = (consultas || []).map(c => c.id);
-
-    const { data: prescripciones, error: prescripcionesError } = consultaIds.length
-      ? await this.db
-        .from('prescripciones')
-        .select('id, consulta_id, medicamento, indicaciones, activa')
-        .in('consulta_id', consultaIds)
-      : { data: [], error: null };
-
-    if (prescripcionesError) {
-      throw prescripcionesError;
-    }
-
-    const { data: estudios, error: estudiosError } = await this.db
-      .from('estudios')
-      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
-      .eq('paciente_id', pacienteId)
-      .order('fecha', { ascending: false });
-
-    if (estudiosError) {
-      throw estudiosError;
+    if (historialError) {
+      throw historialError;
     }
 
     const { data: alergias, error: alergiasError } = await this.db
@@ -230,7 +207,7 @@ export class PatientRepository {
 
     const { data: estudios, error: estudiosError } = await this.db
       .from('estudios')
-      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipo_estudio_id(*), fecha, institucion, descripcion')
+      .select('id, consulta_id, nombre_archivo, url_archivo, tipo_estudio:tipos_estudio!left(*), fecha, institucion, descripcion')
       .eq('paciente_id', pacienteId)
       .order('fecha', { ascending: false });
 
@@ -245,6 +222,33 @@ export class PatientRepository {
       }
       return row;
     });
+
+    const historialBase = {
+      id: null,
+      paciente_id: pacienteId,
+      ant: '',
+      ago: '',
+      ahf: '',
+      mx: '',
+      eco: '',
+      ef: '',
+      otros: '',
+      created_at: null
+    };
+
+    const historialNormalizado = historial
+      ? {
+          ...historialBase,
+          ...historial,
+          ant: historial.ant ?? '',
+          ago: historial.ago ?? '',
+          ahf: historial.ahf ?? '',
+          mx: historial.mx ?? '',
+          eco: historial.eco ?? '',
+          ef: historial.ef ?? '',
+          otros: historial.otros ?? ''
+        }
+      : historialBase;
 
     return {
       paciente: paciente
@@ -264,18 +268,7 @@ export class PatientRepository {
       condicionesCronicas: condicionesCronicas || [],
       consultas: consultas || [],
       estudios: estudiosNormalizados,
-      historial: historial || {
-        id: null,
-        paciente_id: pacienteId,
-        ant: null,
-        ago: null,
-        ahf: null,
-        mx: null,
-        eco: null,
-        ef: null,
-        otros: null,
-        created_at: null
-      }
+      historial: historialNormalizado
     };
   }
 
