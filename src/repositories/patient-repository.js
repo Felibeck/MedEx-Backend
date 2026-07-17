@@ -207,7 +207,7 @@ export class PatientRepository {
 
       if (receta.pathFile) {
         const { data: signedData, error: signedError } = await this.db.storage
-          .from('estudios')
+          .from('recetas')
           .createSignedUrl(receta.pathFile, 60 * 60);
 
         if (!signedError && signedData?.signedUrl) {
