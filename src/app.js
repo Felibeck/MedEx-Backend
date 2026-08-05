@@ -7,16 +7,20 @@ import supabase from './configs/database.js';
 import { PatientRepository } from './repositories/patient-repository.js';
 import { DoctorRepository } from './repositories/doctor-repository.js';
 import { CatalogoRepository } from './repositories/catalogo-repository.js';
+import { AuthRepository } from './repositories/auth-repository.js';
 import { PatientService } from './services/patient-service.js';
 import { DoctorService } from './services/doctor-service.js';
 import { CatalogoService } from './services/catalogo-service.js';
+import { AuthService } from './services/auth-service.js';
 import { PatientController } from './controllers/patient-controller.js';
 import { DoctorController } from './controllers/doctor-controller.js';
 import { CatalogoController } from './controllers/catalogo-controller.js';
+import { AuthController } from './controllers/auth-controller.js';
 import { isValidEstudioFile } from './helpers/validations-helper.js';
 import { createPatientRoutes } from './routes/patient-routes.js';
 import { createDoctorRoutes } from './routes/doctor-routes.js';
 import { createCatalogoRoutes } from './routes/catalogo-routes.js';
+import { createAuthRoutes } from './routes/auth-routes.js';
 const app = express();
 
 // Middlewares
@@ -41,16 +45,19 @@ app.use((req, res, next) => {
 const patientRepository = new PatientRepository(supabase);
 const doctorRepository = new DoctorRepository(supabase);
 const catalogoRepository = new CatalogoRepository(supabase);
+const authRepository = new AuthRepository(supabase);
 
 // Inicializar servicios
 const patientService = new PatientService(patientRepository);
 const doctorService = new DoctorService(doctorRepository);
 const catalogoService = new CatalogoService(catalogoRepository);
+const authService = new AuthService(authRepository);
 
 // Inicializar controladores
 const patientController = new PatientController(patientService);
 const doctorController = new DoctorController(doctorService);
 const catalogoController = new CatalogoController(catalogoService);
+const authController = new AuthController(authService);
 
 // Multer en memoria — solo para el endpoint de consultas (acepta multipart/form-data)
 const upload = multer({ storage: multer.memoryStorage() });
@@ -71,6 +78,7 @@ const uploadEstudio = multer({
 app.use('/api/patients', createPatientRoutes(patientController, uploadEstudio));
 app.use('/api/doctors', createDoctorRoutes(doctorController, upload));
 app.use('/api/catalogos', createCatalogoRoutes(catalogoController));
+app.use('/api/auth', createAuthRoutes(authController));
 
 // Ruta de prueba
 app.get('/health', (req, res) => {
