@@ -61,11 +61,17 @@ export const validatePatientData = (patientData) => {
 export const validateDoctorData = (doctorData) => {
   const errors = [];
 
-  if (!doctorData.firstName || doctorData.firstName.trim() === '') {
+  const firstName = doctorData.firstName || doctorData.nombre;
+  const lastName = doctorData.lastName || doctorData.apellido;
+  const phoneNumber = doctorData.phoneNumber || doctorData.telefono;
+  const specialty = doctorData.specialty || doctorData.especialidad;
+  const licenseNumber = doctorData.licenseNumber || doctorData.matricula;
+
+  if (!firstName || firstName.trim() === '') {
     errors.push('El nombre es requerido');
   }
 
-  if (!doctorData.lastName || doctorData.lastName.trim() === '') {
+  if (!lastName || lastName.trim() === '') {
     errors.push('El apellido es requerido');
   }
 
@@ -77,40 +83,20 @@ export const validateDoctorData = (doctorData) => {
     errors.push('La contraseña debe tener al menos 8 caracteres, incluir mayúscula, minúscula y número');
   }
 
-  if (!validatePhoneNumber(doctorData.phoneNumber)) {
+  if (!validatePhoneNumber(phoneNumber)) {
     errors.push('El número de teléfono no es válido');
   }
 
-  if (!doctorData.specialty || doctorData.specialty.trim() === '') {
+  if (!specialty || specialty.trim() === '') {
     errors.push('La especialidad es requerida');
   }
 
-  if (!doctorData.licenseNumber || doctorData.licenseNumber.trim() === '') {
+  if (!licenseNumber || licenseNumber.trim() === '') {
     errors.push('El número de licencia es requerido');
-  }
-
-  if (!Number.isInteger(doctorData.yearsOfExperience) || doctorData.yearsOfExperience < 0) {
-    errors.push('Los años de experiencia deben ser un número válido');
   }
 
   if (!doctorData.hospital || doctorData.hospital.trim() === '') {
     errors.push('El hospital es requerido');
-  }
-
-  if (!doctorData.organizacion_id) {
-    errors.push('La organización (organizacion_id) es requerida');
-  }
-
-  if (!doctorData.address || doctorData.address.trim() === '') {
-    errors.push('La dirección es requerida');
-  }
-
-  if (!doctorData.city || doctorData.city.trim() === '') {
-    errors.push('La ciudad es requerida');
-  }
-
-  if (!doctorData.consultationFee || doctorData.consultationFee <= 0) {
-    errors.push('La tarifa de consulta debe ser un número positivo');
   }
 
   return {

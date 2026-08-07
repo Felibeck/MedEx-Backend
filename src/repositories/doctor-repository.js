@@ -363,17 +363,16 @@ export class DoctorRepository {
     };
   }
 
-async loginDoctor(email, password)
-    {
-      const { data, error } = await this.db
-        .from('usuarios')
-        .select('id, email, password_hash, es_medico, nombre, apellido, perfiles_profesional (id, organizacion_id, matricula, especialidad_medica)')
-        .eq('email', email)
-        .maybeSingle();
+async loginDoctor(email, password) {
+    const { data, error } = await this.db
+      .from('usuarios')
+      .select('id, email, password_hash, es_medico, nombre, apellido, perfiles_profesional (id, organizacion_id, matricula, especialidad_medica)')
+      .eq('email', email)
+      .maybeSingle();
 
-      if (error) {
-        throw new Error(`Error al iniciar sesión: ${error.message}`);
-      }
+    if (error) {
+      throw new Error(`Error al iniciar sesión: ${error.message}`);
+    }
 
       if (!data) {
         return null;
@@ -474,21 +473,6 @@ async loginDoctor(email, password)
         return rest;
       }
     };
-  }
-
-  async organizationExists(organizacionId) {
-    if (!organizacionId) return false;
-    const { data, error } = await this.db
-      .from('organizaciones')
-      .select('id')
-      .eq('id', organizacionId)
-      .maybeSingle();
-
-    if (error) {
-      throw new Error(`Error verificando organización: ${error.message}`);
-    }
-
-    return !!data;
   }
 
   // Sube el PDF al bucket de Supabase Storage y guarda el registro en la tabla recetas

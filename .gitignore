@@ -9,6 +9,9 @@ yarn-error.log
 .env.local
 .env.*.local
 
+# MCP config (contiene tokens en texto plano)
+.mcp.json
+
 # IDE
 .vscode/
 .idea/

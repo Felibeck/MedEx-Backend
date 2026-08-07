@@ -5,6 +5,10 @@ import { validateDoctorData } from '../helpers/validations-helper.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// El registro de doctor no pide organización en el front todavía, así que
+// se hardcodea a la organización existente hasta que se defina ese flujo.
+const DEFAULT_ORGANIZACION_ID = '02e27451-a22b-40ae-b080-9f924b861495';
+
 export class DoctorService {
   constructor(doctorRepository) {
     this.doctorRepository = doctorRepository;
@@ -256,15 +260,6 @@ export class DoctorService {
       }
     }
 
-    // Verificar existencia de la organización referenciada para evitar violación FK
-    const organizacionId = doctorData.organizacion_id;
-    if (organizacionId) {
-      const exists = await this.doctorRepository.organizationExists(organizacionId);
-      if (!exists) {
-        throw new Error('Organización no encontrada (organizacion_id inválido)');
-      }
-    }
-
     // Hashear contraseña
     const passwordHash = await bcrypt.hash(doctorData.password, 10);
 
@@ -275,11 +270,24 @@ export class DoctorService {
       apellido: doctorData.lastName || doctorData.apellido,
       matricula: doctorData.licenseNumber || doctorData.matricula,
       especialidad_medica: doctorData.specialty || doctorData.especialidad || null,
-      organizacion_id: doctorData.organizacion_id
+      organizacion_id: DEFAULT_ORGANIZACION_ID
     };
 
     const doctor = await this.doctorRepository.create(createPayload);
-    return doctor.getPublicData();
+    const publicUser = doctor.getPublicData();
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET no configurado en el entorno');
+    }
+
+    const token = jwt.sign(
+      { id: doctor.id, es_medico: doctor.es_medico },
+      jwtSecret,
+      { expiresIn: process.env.JWT_EXPIRATION || '1h' }
+    );
+
+    return { user: publicUser, token };
   }
 
   // (otros métodos comentados siguen)
