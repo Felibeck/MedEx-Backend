@@ -22,4 +22,17 @@ export class AuthController {
       res.status(status).json({ success: false, message: error.message });
     }
   }
+
+  async logout(req, res) {
+    try {
+      const authHeader = req.headers.authorization || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+      const result = await this.authService.logout(token);
+      res.status(200).json({ success: true, message: result.message });
+    } catch (error) {
+      const status = error.message && error.message.toLowerCase().includes('token') ? 401 : 500;
+      res.status(status).json({ success: false, message: error.message });
+    }
+  }
 }

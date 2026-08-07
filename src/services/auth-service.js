@@ -47,4 +47,23 @@ export class AuthService {
 
     return { user: publicUser, token };
   }
+
+  async logout(token) {
+    if (!token) {
+      throw new Error('Token de autorización requerido');
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET no configurado en el entorno');
+    }
+
+    try {
+      jwt.verify(token, jwtSecret);
+    } catch (error) {
+      throw new Error('Token inválido o expirado');
+    }
+
+    return { message: 'Logout exitoso' };
+  }
 }
