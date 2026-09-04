@@ -1,37 +1,41 @@
 ## Copilot / AI agent quick guide — MedEx Backend
 
-Purpose: give an AI coding agent the minimal, actionable context to contribute code changes safely and consistently.
+Purpose: minimal, actionable context so an AI agent can make safe, idiomatic changes.
 
-- **Big picture:** This is a small Express (ESM) backend wired in layers: `src/app.js` composes Repositories → Services → Controllers and registers route factories in `src/modules/` under the `/api` prefix.
-- **Runtime & scripts:** Node >= 18, `type: "module"` in `package.json`. Dev commands: `npm install`, `npm run dev` (uses `node --watch index.js`), `npm start`.
-- **DB / integration:** Data access uses Supabase client from `src/configs/database.js`. Required env vars: `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` (see `.env-template`). Do not swap that client for raw PG without updating wiring.
+- **Big picture:** Layered Express (ESM) backend: Controller → Service → Repository → Supabase. Central wiring is in [src/app.js](src/app.js#L1). Routes live under [src/routes/](src/routes/). Entities live under [src/entities/].
 
-- **Response convention:** All controllers return JSON shaped as `{ success: boolean, message?: string, data?: any }` (see `src/controllers/*-controller.js`). Preserve this shape when adding handlers or error responses.
-- **Error handling:** Controllers catch errors and map to HTTP status codes; generic errors return `500` and the same JSON envelope. Global error-handling middleware is in `src/app.js` — prefer throwing `Error` with descriptive messages inside services.
+- **Runtime & common commands:** Node >= 18, ESM (`type: "module"`). Common commands:
 
-- **Where to add new features:**
-  - Entity: add model/shape under `src/entities/` (plain JS file).
-  - Data access: add a Repository in `src/repositories/` that accepts the Supabase client in its constructor.
-  - Business logic: add a Service in `src/services/` that accepts the repository instance.
-  - HTTP layer: add Controller in `src/controllers/` with methods matching route handlers.
-  - Routes: add a route factory in `src/modules/` (export a `createXRoutes(controller)` function) and register it in `src/app.js` with the `/api` prefix.
+  - `npm install`
+  - `npm run dev` (uses `node --watch index.js`)
+  - `npm start`
 
-- **Wiring example:** see `src/app.js` — repositories are `new Repo(supabase)`, services `new Service(repo)`, controllers `new Controller(service)`, then `app.use('/api/x', createXRoutes(controller))`.
+- **Database / integration:** Uses Supabase via [src/configs/database.js](src/configs/database.js#L1). Required env vars are in `.env-template` (`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`). For local development prefer the Supabase MCP connector (see CLAUDE.md) instead of embedding service keys.
 
-- **Conventions & patterns to follow:**
-  - Keep layers thin: controllers only parse/validate request and call service methods.
-  - Services implement domain rules and throw Errors for expected failure cases (controllers convert to status codes).
-  - Repositories only talk to Supabase and return raw or normalized rows.
-  - Routes are created via factory functions in `src/modules/` that accept a controller instance.
+- **Response & error conventions:** Controllers return the JSON envelope `{ success: boolean, message?: string, data?: any }` (see [src/controllers](src/controllers/)). Services throw `Error` for expected failures; controllers map errors to HTTP status codes. Global error handling is in [src/app.js](src/app.js#L1). Use [src/helpers/validations-helper.js](src/helpers/validations-helper.js#L1) for input checks.
 
-- **ENV & secrets:** The app requires `.env` entries from `.env-template`. Don't commit secrets. If adding CI or local dev helpers, read `src/configs/database.js` to respect the Supabase client shape.
+- **Add a new resource (4-step pattern):**
+  1. Add an entity in [src/entities/] (example: [src/entities/Usuario.js](src/entities/Usuario.js#L1)).
+  2. Add a repository in [src/repositories/*-repository.js] that accepts the Supabase client.
+  3. Add a service in [src/services/*-service.js] that accepts the repository and contains business rules (throw `Error` for expected failures).
+  4. Add a controller in [src/controllers/*-controller.js] and a route factory in [src/routes/*-routes.js]; register in [src/app.js](src/app.js#L1) via `app.use('/api/x', createXRoutes(controller))`.
 
-- **Tests & scripts:** There are no tests in the repo. Avoid adding large test frameworks without author approval. If you add tests, add a script to `package.json`.
+- **Naming & file patterns:** Use suffixes `-repository.js`, `-service.js`, `-controller.js`, `-routes.js`. Routes are factory functions that accept a controller instance. Do not introduce TypeScript; this repo is JS-only.
 
-- **Documentation pointers:** For API examples and architecture diagrams consult [EJEMPLOS_API.md](EJEMPLOS_API.md) and [ARQUITECTURA.md](ARQUITECTURA.md).
+- **Entities & public data:** Entity classes (e.g., [src/entities/Doctor.js](src/entities/Doctor.js#L1), [src/entities/Patient.js](src/entities/Patient.js#L1)) often expose a `getPublicData()` method to strip sensitive fields like `password_hash` before sending responses.
 
-- **Quick code examples:**
-  - Registering routes: see `src/modules/patient-routes.js` and `src/modules/doctor-routes.js` for idiomatic route setup.
-  - Controller pattern: `src/controllers/patient-controller.js` — returns envelope and uses `this.patientService` methods.
+- **Database schema & migrations:** Schema is in [database/schema.sql](database/schema.sql) and incremental scripts under [database/migrations/](database/migrations/). When changing schema: provide SQL migration/backfill, update repository queries, update entity mappings, add/adjust validations in services, and map errors in controllers.
 
-If anything in this file is unclear or you need more examples (e.g., common SQL shapes, expected repository return types), ask and I will expand with concrete code snippets from the repository.
+- **Debugging & checks:** Use `node --watch index.js` for iterative development. Use [scripts/check_supabase.js](scripts/check_supabase.js) to validate DB connectivity. Check middleware in [src/middlewares/require-medico.js](src/middlewares/require-medico.js#L1) and [src/middlewares/require-paciente.js](src/middlewares/require-paciente.js#L1) for auth behavior.
+
+- **Do NOT:**
+  - Commit `.env` or embed service keys. Respect `.env-template` and secrets handling.
+  - Replace the Supabase client pattern in [src/configs/database.js](src/configs/database.js#L1) with a raw PG client without updating wiring in [src/app.js](src/app.js#L1).
+
+- **Tests & tooling:** There are no tests in this repo. Do not add large test frameworks (Jest, Vitest) without approval; if tests are added, also add npm scripts to `package.json`.
+
+- **Examples / quick references:**
+  - Wiring (see [src/app.js](src/app.js#L1)): `new XRepository(supabase)` → `new XService(repo)` → `new XController(service)` → `app.use('/api/x', createXRoutes(controller))`.
+  - Controller pattern: see [src/controllers/patient-controller.js](src/controllers/patient-controller.js#L1).
+
+If you want concrete snippets (migration template, example repository SELECT with joins, or an entity mapping), say which resource and I'll add the snippet.
