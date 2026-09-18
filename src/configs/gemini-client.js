@@ -22,9 +22,9 @@ export async function callGemini({ systemInstruction, contents, tools }) {
     ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction }] } } : {})
   };
 
-  const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+  const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
     body: JSON.stringify(body)
   });
 

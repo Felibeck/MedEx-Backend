@@ -173,8 +173,14 @@ export class MedicoChatService {
       const { name, args, id } = functionCallPart.functionCall;
       const functionCallEcho = { name, args, ...(id ? { id } : {}) };
 
-      // Registrar el turno del modelo (la llamada a función) en el historial
-      conversacion.historial.push({ role: 'model', parts: [{ functionCall: functionCallEcho }] });
+      // Registrar el turno del modelo (la llamada a función) en el historial.
+      // Gemini 3.x exige reenviar thoughtSignature tal cual junto al functionCall
+      // en turnos siguientes, o rechaza la conversación (ver docs de thought signatures).
+      const parteModelo = { functionCall: functionCallEcho };
+      if (functionCallPart.thoughtSignature) {
+        parteModelo.thoughtSignature = functionCallPart.thoughtSignature;
+      }
+      conversacion.historial.push({ role: 'model', parts: [parteModelo] });
 
       if (name === 'crear_consulta') {
         const resultado = this._prepararConfirmacionCrearConsulta(conversacion, args);
