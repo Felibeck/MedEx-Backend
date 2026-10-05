@@ -1,6 +1,12 @@
 // Controlador del chat de IA para médicos
 // Maneja las solicitudes HTTP del endpoint de function calling
 
+// Solo estos status del servicio (límite de uso / alta demanda de Gemini) se propagan al cliente;
+// cualquier otro valor se devuelve como 500.
+const PROPAGATED_ERROR_STATUS = [429, 503];
+
+const httpStatusFor = (error) => (PROPAGATED_ERROR_STATUS.includes(error?.status) ? error.status : 500);
+
 export class MedicoChatController {
   constructor(medicoChatService) {
     this.medicoChatService = medicoChatService;
@@ -22,7 +28,7 @@ export class MedicoChatController {
       res.status(200).json({ success: true, data: resultado });
     } catch (error) {
       console.error('medico-chat-controller.chat error:', error);
-      res.status(error.status || 500).json({ success: false, message: error.message });
+      res.status(httpStatusFor(error)).json({ success: false, message: error.message });
     }
   }
 
@@ -51,7 +57,7 @@ export class MedicoChatController {
       res.status(200).json({ success: true, data: resultado });
     } catch (error) {
       console.error('medico-chat-controller.confirmar error:', error);
-      res.status(error.status || 500).json({ success: false, message: error.message });
+      res.status(httpStatusFor(error)).json({ success: false, message: error.message });
     }
   }
 }
