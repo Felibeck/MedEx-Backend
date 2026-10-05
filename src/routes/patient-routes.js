@@ -11,6 +11,9 @@
     // Historial clínico del paciente autenticado (debe ir antes de '/:id')
     router.get('/me/historial', requirePaciente, (req, res) => patientController.getHistorialClinico(req, res));
 
+    // Datos de la pantalla Inicio del paciente autenticado
+    router.get('/me/home', requirePaciente, (req, res) => patientController.getHome(req, res));
+
     // Recetas del paciente autenticado
     router.get('/me/recetas', requirePaciente, (req, res) => patientController.getRecetas(req, res));
 
