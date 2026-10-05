@@ -15,6 +15,20 @@ const TRANSIENT_ERROR_STATUS = ['UNAVAILABLE', 'RESOURCE_EXHAUSTED'];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// true si el error de Gemini trae un QuotaFailure cuyo quotaId es de cuota diaria (ej:
+// GenerateRequestsPerDayPerProjectPerModel-FreeTier). No se repone esperando segundos, así que no se reintenta.
+// Se detecta por quotaId, no por el texto del mensaje.
+function isDailyQuotaExceeded(geminiError) {
+  const details = Array.isArray(geminiError?.details) ? geminiError.details : [];
+  return details.some(
+    (detail) =>
+      typeof detail?.['@type'] === 'string' &&
+      detail['@type'].endsWith('QuotaFailure') &&
+      Array.isArray(detail.violations) &&
+      detail.violations.some((violation) => typeof violation?.quotaId === 'string' && violation.quotaId.includes('PerDay'))
+  );
+}
+
 // Devuelve el motivo (sin mensaje ni contenido del chat) si el error es transitorio, o null si es permanente.
 function transientReason(httpStatus, geminiError) {
   if (
@@ -45,6 +59,11 @@ async function attemptGemini(url, apiKey, body) {
     const json = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 429 && isDailyQuotaExceeded(json?.error)) {
+        const error = new Error('Se agotó el límite diario de uso del asistente de IA. Probá de nuevo más tarde.');
+        error.status = 429;
+        throw error;
+      }
       const reason = transientReason(response.status, json?.error);
       if (reason) return { transient: reason };
       throw new Error(`Error de la API de Gemini: ${json?.error?.message || response.statusText}`);
@@ -75,7 +94,7 @@ export async function callGemini({ systemInstruction, contents, tools }) {
     throw new Error('GEMINI_API_KEY no configurado en el entorno');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 
   const body = {
     contents,

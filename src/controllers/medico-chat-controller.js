@@ -22,7 +22,7 @@ export class MedicoChatController {
       res.status(200).json({ success: true, data: resultado });
     } catch (error) {
       console.error('medico-chat-controller.chat error:', error);
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.status || 500).json({ success: false, message: error.message });
     }
   }
 
@@ -51,7 +51,7 @@ export class MedicoChatController {
       res.status(200).json({ success: true, data: resultado });
     } catch (error) {
       console.error('medico-chat-controller.confirmar error:', error);
-      res.status(500).json({ success: false, message: error.message });
+      res.status(error.status || 500).json({ success: false, message: error.message });
     }
   }
 }
