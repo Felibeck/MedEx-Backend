@@ -176,14 +176,17 @@ export class PatientRepository {
     return data;
   }
 
-  async getRecetas(pacienteId) {
+  // `limit` es opcional: sin él devuelve todas las recetas del paciente
+  async getRecetas(pacienteId, limit = null) {
     const resolvedPacienteId = await this.resolvePacienteId(pacienteId);
 
     if (!resolvedPacienteId) {
       return [];
     }
 
-    const { data: recetas, error: recetasError } = await this.db
+    // El join debe ser !inner: sin él, el filtro por paciente no descarta filas
+    // y se devuelven las recetas de todos los pacientes
+    let recetasQuery = this.db
       .from('recetas')
       .select(`
         id,
@@ -191,12 +194,18 @@ export class PatientRepository {
         titulo,
         pathFile,
         created_at,
-        consulta:consulta_id (
+        consulta:consulta_id!inner (
           paciente_id
         )
       `)
       .eq('consulta.paciente_id', resolvedPacienteId)
       .order('created_at', { ascending: false });
+
+    if (limit) {
+      recetasQuery = recetasQuery.limit(limit);
+    }
+
+    const { data: recetas, error: recetasError } = await recetasQuery;
 
     if (recetasError) {
       throw new Error(`Error al obtener recetas del paciente: ${recetasError.message}`);
@@ -226,6 +235,98 @@ export class PatientRepository {
     }));
 
     return recetasConUrl;
+  }
+
+  // Últimas consultas del paciente (más reciente primero) — usadas por la Home
+  async getConsultasRecientes(pacienteId, limit) {
+    const { data, error } = await this.db
+      .from('consultas')
+      .select(`
+        id,
+        fecha,
+        tipo_consulta,
+        diagnostico,
+        solicitud_estudio,
+        solicitud_citaprox,
+        profesional_id,
+        profesional:profesional_id (
+          especialidad_medica,
+          usuario:usuario_id (nombre, apellido)
+        ),
+        organizacion:organizacion_id (nombre)
+      `)
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(`Error al obtener consultas del paciente: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  // Últimos estudios del paciente (más reciente primero) — usados por la Home
+  async getEstudiosRecientes(pacienteId, limit) {
+    const { data, error } = await this.db
+      .from('estudios')
+      .select('id, titulo, tipo_estudio:tipos_estudio!left(*), fecha, institucion')
+      .eq('paciente_id', pacienteId)
+      .order('fecha', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    }
+
+    return (data || []).map(row => {
+      if (row.tipo_estudio) {
+        const label = row.tipo_estudio.nombre ?? row.tipo_estudio.tipo ?? row.tipo_estudio.label ?? null;
+        return { ...row, tipo_estudio: label };
+      }
+      return row;
+    });
+  }
+
+  // Cantidad total de consultas, estudios y recetas del paciente — usada por la Home
+  async getTotalesPaciente(pacienteId) {
+    const [consultas, estudios, recetas] = await Promise.all([
+      this.db.from('consultas').select('id', { count: 'exact', head: true }).eq('paciente_id', pacienteId),
+      this.db.from('estudios').select('id', { count: 'exact', head: true }).eq('paciente_id', pacienteId),
+      this.db
+        .from('recetas')
+        .select('id, consulta:consulta_id!inner (paciente_id)', { count: 'exact', head: true })
+        .eq('consulta.paciente_id', pacienteId)
+    ]);
+
+    const error = consultas.error || estudios.error || recetas.error;
+    if (error) {
+      throw new Error(`Error al obtener totales del paciente: ${error.message}`);
+    }
+
+    return {
+      consultas: consultas.count ?? 0,
+      estudios: estudios.count ?? 0,
+      recetas: recetas.count ?? 0
+    };
+  }
+
+  // Fecha de la última subida de un estudio del paciente (null si no tiene ninguno)
+  async getUltimaSubidaEstudio(pacienteId) {
+    const { data, error } = await this.db
+      .from('estudios')
+      .select('subido_at')
+      .eq('paciente_id', pacienteId)
+      .order('subido_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Error al obtener estudios del paciente: ${error.message}`);
+    }
+
+    return data?.subido_at || null;
   }
 
   async getHistorialClinico(pacienteId) {

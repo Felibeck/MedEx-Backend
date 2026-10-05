@@ -5,6 +5,11 @@ import { validatePatientData, validatePatientUpdate, validateEstudioData, isVali
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+// Home del paciente: cuántos ítems se muestran y qué tan atrás se buscan pendientes
+const HOME_CONSULTAS_LIMIT = 20;
+const HOME_ITEMS_LIMIT = 3;
+const HOME_PENDIENTES_VENTANA_DIAS = 90;
+
 export class PatientService {
   constructor(patientRepository) {
     this.patientRepository = patientRepository;
@@ -172,6 +177,94 @@ export class PatientService {
     }
 
     return await this.patientRepository.getRecetas(pacienteId);
+  }
+
+  // Datos de la pantalla Inicio del paciente autenticado
+  async getHome(usuario, perfilPaciente) {
+    if (!perfilPaciente?.id) {
+      throw new Error('El ID del paciente es requerido');
+    }
+
+    const pacienteId = perfilPaciente.id;
+
+    const [consultas, estudios, ultimaSubidaEstudio, recetas, totales] = await Promise.all([
+      this.patientRepository.getConsultasRecientes(pacienteId, HOME_CONSULTAS_LIMIT),
+      this.patientRepository.getEstudiosRecientes(pacienteId, HOME_ITEMS_LIMIT),
+      this.patientRepository.getUltimaSubidaEstudio(pacienteId),
+      this.patientRepository.getRecetas(pacienteId, HOME_ITEMS_LIMIT),
+      this.patientRepository.getTotalesPaciente(pacienteId)
+    ]);
+
+    const mapProfesional = (consulta) => ({
+      nombre: consulta.profesional?.usuario?.nombre || null,
+      apellido: consulta.profesional?.usuario?.apellido || null,
+      especialidad_medica: consulta.profesional?.especialidad_medica || null
+    });
+
+    const ultima = consultas[0] || null;
+
+    // Los pendientes se derivan de los flags que el médico marcó en consultas recientes
+    const desde = new Date();
+    desde.setDate(desde.getDate() - HOME_PENDIENTES_VENTANA_DIAS);
+    const fechaDesde = desde.toISOString().slice(0, 10);
+    const fechaUltimaSubida = ultimaSubidaEstudio ? ultimaSubidaEstudio.slice(0, 10) : null;
+
+    const pendientes = [];
+    for (const consulta of consultas) {
+      if (consulta.fecha < fechaDesde) continue;
+
+      // Cita de seguimiento: sigue pendiente si no hubo otra consulta posterior con ese profesional
+      const volvioAlProfesional = consultas.some(otra =>
+        otra.profesional_id === consulta.profesional_id && otra.fecha > consulta.fecha
+      );
+      if (consulta.solicitud_citaprox && !volvioAlProfesional) {
+        pendientes.push({
+          tipo: 'cita_seguimiento',
+          consulta_id: consulta.id,
+          fecha: consulta.fecha,
+          profesional: mapProfesional(consulta)
+        });
+      }
+
+      // Estudio solicitado: sigue pendiente si no se subió ningún estudio desde esa consulta
+      const subioEstudio = fechaUltimaSubida !== null && fechaUltimaSubida >= consulta.fecha;
+      if (consulta.solicitud_estudio && !subioEstudio) {
+        pendientes.push({
+          tipo: 'estudio_solicitado',
+          consulta_id: consulta.id,
+          fecha: consulta.fecha,
+          profesional: mapProfesional(consulta)
+        });
+      }
+    }
+
+    return {
+      paciente: {
+        nombre: usuario?.nombre || null,
+        apellido: usuario?.apellido || null,
+        obra_social: perfilPaciente.obra_social || null,
+        cobertura_estado: perfilPaciente.cobertura_estado || 'sin_informacion'
+      },
+      ultima_consulta: ultima
+        ? {
+            id: ultima.id,
+            fecha: ultima.fecha,
+            tipo_consulta: ultima.tipo_consulta,
+            diagnostico: ultima.diagnostico || null,
+            profesional: mapProfesional(ultima),
+            organizacion: ultima.organizacion?.nombre || null
+          }
+        : null,
+      pendientes,
+      totales,
+      recetas_recientes: recetas.map(receta => ({
+        id: receta.id,
+        titulo: receta.titulo,
+        created_at: receta.created_at,
+        url: receta.url
+      })),
+      estudios_recientes: estudios
+    };
   }
 
   // Obtener perfil de paciente
