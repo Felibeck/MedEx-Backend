@@ -14,7 +14,7 @@ export async function callGemini({ systemInstruction, contents, tools }) {
     throw new Error('GEMINI_API_KEY no configurado en el entorno');
   }
 
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
   const body = {
     contents,
