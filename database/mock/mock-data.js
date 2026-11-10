@@ -20,6 +20,7 @@ export const ORGANIZACIONES = {
 export const MEDICOS = [
   {
     key: 'sosa',
+    titulo: 'Dra.',
     email: 'mock.valeria.sosa@example.com',
     firstName: 'Valeria',
     lastName: 'Sosa Ferrari',
@@ -35,6 +36,7 @@ export const MEDICOS = [
   },
   {
     key: 'echeverria',
+    titulo: 'Dr.',
     email: 'mock.martin.echeverria@example.com',
     firstName: 'Martín',
     lastName: 'Echeverría',
@@ -50,6 +52,7 @@ export const MEDICOS = [
   },
   {
     key: 'benitez',
+    titulo: 'Dra.',
     email: 'mock.lucia.benitez@example.com',
     firstName: 'Lucía',
     lastName: 'Benítez Aguirre',
