@@ -1,7 +1,16 @@
 # Plan: activar RLS en las 14 tablas de `public`
 
-Estado: **plan, sin aplicar.** Inventario tomado el 2026-11-10 con el conector de Supabase
+Estado: **aplicado el 2026-11-10.** Inventario tomado ese mismo día con el conector de Supabase
 (solo lectura) sobre el proyecto MedEx.
+
+| Migración (`apply_migration`) | Archivo | Rollback | Verificación |
+|---|---|---|---|
+| `enable_rls_14_tablas_public` | `enable_rls.sql` | `rollback_rls.sql` | Anon: HTTP 200 con 0 filas. Backend igual que la línea base |
+| `revoke_anon_authenticated_public` | `revoke_anon_authenticated.sql` | `rollback_revoke_anon_authenticated.sql` | Anon: HTTP 401 (`42501`). Backend igual que la línea base. Advisor: sin alertas nuevas |
+
+No se pudo verificar el chat del médico hasta la tarjeta de confirmación: Gemini devuelve 429
+(cuota diaria agotada) desde antes del cambio. `GET /api/patients/:id` devolvía 404 antes y
+después; no lo causó este cambio.
 
 ## Hallazgo
 
@@ -109,11 +118,12 @@ Con el backend corriendo (`npm run dev`), usando un médico mock y un paciente m
 
 ## Pendientes que no son RLS (no se corrigen en este paso)
 
-1. **Grants amplios.** `anon` y `authenticated` tienen `arwdDxtm` (todo) sobre todas las tablas de
-   `public`, y los `default privileges` de `postgres` y `supabase_admin` se los dan también a las
-   tablas futuras. Con RLS activo no pueden ver filas, pero sí pueden hacer `TRUNCATE`, que RLS
-   no frena. Propuesta para otro paso: `REVOKE ALL ON ALL TABLES/SEQUENCES/FUNCTIONS IN SCHEMA
-   public FROM anon, authenticated` y ajustar los default privileges.
+1. **Grants amplios: resuelto** con `revoke_anon_authenticated.sql`, salvo los default privileges
+   de `supabase_admin`. Esos todavía les dan ALL a anon y authenticated sobre los objetos que cree
+   `supabase_admin` en public, y no se pueden cambiar con el rol `postgres` porque no es miembro.
+   Las tablas creadas desde el editor o con migraciones son de `postgres` y ya quedan protegidas.
+   Conviene que cada tabla nueva active RLS y que se corra el advisor después de cada cambio de
+   esquema.
 2. **Exposición de la Data API.** Como ningún cliente usa PostgREST con la anon key, se podría
    sacar `public` de los schemas expuestos o desactivar la Data API en el dashboard.
 3. **Exposición pasada.** Las tablas estuvieron legibles y escribibles por anon. Conviene revisar los
