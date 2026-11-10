@@ -27,3 +27,6 @@ build/
 # Logs
 logs/
 *.log
+# Datos mock locales (credenciales y estado del seed): nunca se commitean
+.mock-*.local.json
+.mock-files.local/

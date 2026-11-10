@@ -1,0 +1,10 @@
+[33m7926efa[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeli-dev[m[33m, [m[1;31morigin/feli-dev[m[33m)[m fix(chat): propagar solo 429 y 503 desde el controller del chat
+[33m4eb6def[m fix(chat): no reintentar cuando se agota la cuota diaria de Gemini
+[33m8b0e884[m docs(env): aclarar cómo resolver errores de certificado TLS sin desactivar la verificación
+[33m0dfd17d[m feat: reintento con backoff y timeout en el cliente de Gemini
+[33m86534b7[m fix: actualizar modelo Gemini por defecto a gemini-3.6-flash
+[33m43f68c5[m Merge remote-tracking branch 'origin/main' into feli-dev
+[33m54435cb[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m inicio done
+[33m75f225e[m feat: chat médico con IA (Gemini) para crear consultas por lenguaje natural- Orchestrator con function calling (buscar paciente, ver historial, crear consulta)- Flujo de confirmación explícita antes de escribir en la base- Cliente Gemini adaptado al nuevo formato de auth key (AQ.) vía header- Fix: reenvío de thoughtSignature requerido por modelos Gemini 3.x- Migración de modelo: gemini-2.0-flash (dado de baja) -> configurable vía GEMINI_MODEL
+[33ma7e33b5[m feat: mcp empezado para chatbot
+[33m9cc7166[m agregamos validacion con token al inicio de sesion de paciente
